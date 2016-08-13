@@ -26,4 +26,4 @@ translib.o : translib.h
 tar:
 	tar czf 123.tar.gz Makefile *.h *.c perf.sh
 clean:
-	rm -f http_daemon http_put *.o
+	rm -f http_daemon watch_and_transfer http_put *.o

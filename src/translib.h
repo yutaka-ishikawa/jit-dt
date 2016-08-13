@@ -1,4 +1,5 @@
 //#define DEBUG
+extern int	vflag;
 extern int	dflag;
 #ifdef DEBUG
 #define DBG	if (dflag)
@@ -6,6 +7,7 @@ extern int	dflag;
 #define DBG	if (0)
 #endif
 
+#define VMODE	if (vflag)
 #define TRANS_HTTP	0
 #define TRANS_SCP	1
 #define TRANS_SFTP	2

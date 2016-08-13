@@ -1,0 +1,100 @@
+sftp -b - -o Compression=yes yisikawa@seg-gw.nict.go.jp
+
+curl -F "file=@data.gz" http://kncc-login1.kncc.cc.u-tokyo.ac.jp
+
+1) gmpをinstall
+    ./configure --prefix=/home/ishikawa/local/
+2) nettle-3.1をinstall
+    ./configure --prefix=/home/ishikawa/local/ --enable-mini-gmp
+3) PKG_CONFIG_PATH設定
+    export PKG_CONFIG_PATH=/home/ishikawa/local/lib/pkgconfig/:/home/ishikawa/local/lib64/pkgconfig/
+4) libtasn1-4.3をinstall
+    ./configure --prefix=/home/ishikawa/local/
+5) LDFLAGS & LD_PATHの設定
+    export LDFLAGS="-L/home/ishikawa/local/lib/ -L/home/ishikawa/local/lib64/"
+    export LD_LIBRARY_PATH=/home/ishikawa/local/lib/:/home/ishikawa/local/lib64/:$LD_LIBRARY_PATH
+5) gnutlsをinstall
+    ./configure --prefix=/home/ishikawa/local/ --without-p11-kit --with-included-libtasn1
+6) PATH設定
+    PATH=/home/ishikawa/local/bin:$PATH
+7) libgpg-error-1.21をinstall
+    ./configure --prefix=/home/ishikawa/local/
+8) libgcrptをinstall
+    ./configure --prefix=/home/ishikawa/local/
+
+libgrypt and libgnutls
+https://www.gnu.org/software/libmicrohttpd/
+	http://ftp.gnu.org/gnu/libmicrohttpd/
+% apt-get install libgcrypt11-dev
+% apt-get install libgnutls-dev
+% ./configure --enable-https
+
+--------------------------------------------------------------------------
+http://curl.haxx.se/download.html
+To enable SSL, the following packages are required:
+   libssl package
+  % sudo apt-get install libssl-dev
+
+#以下で大丈夫らしい
+#	% sudo apt-get install curl libc6 libcurl3 zlib1g
+./configure --with-ssl
+  curl version:     7.46.0
+  Host setup:       x86_64-pc-linux-gnu
+  Install prefix:   /usr/local
+  Compiler:         gcc
+  SSL support:      enabled (OpenSSL)
+  SSH support:      no      (--with-libssh2)
+  zlib support:     enabled
+  GSS-API support:  no      (--with-gssapi)
+  TLS-SRP support:  enabled
+  resolver:         default (--enable-ares / --enable-threaded-resolver)
+  IPv6 support:     enabled
+  Unix sockets support: enabled
+  IDN support:      no      (--with-{libidn,winidn})
+  Build libcurl:    Shared=yes, Static=yes
+  Built-in manual:  enabled
+  --libcurl option: enabled (--disable-libcurl-option)
+  Verbose errors:   enabled (--disable-verbose)
+  SSPI support:     no      (--enable-sspi)
+  ca cert bundle:   /etc/ssl/certs/ca-certificates.crt
+  ca cert path:     no
+  LDAP support:     no      (--enable-ldap / --with-ldap-lib / --with-lber-lib)
+  LDAPS support:    no      (--enable-ldaps)
+  RTSP support:     enabled
+  RTMP support:     no      (--with-librtmp)
+  metalink support: no      (--with-libmetalink)
+  PSL support:      no      (libpsl not found)
+  HTTP2 support:    disabled (--with-nghttp2)
+  Protocols:        DICT FILE FTP FTPS GOPHER HTTP HTTPS IMAP IMAPS POP3 POP3S RTSP SMB SMBS SMTP SMTPS TELNET TFTP
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+./configure
+  curl version:     7.46.0
+  Host setup:       x86_64-pc-linux-gnu
+  Install prefix:   /usr/local
+  Compiler:         gcc
+  SSL support:      no      (--with-{ssl,gnutls,nss,polarssl,mbedtls,cyassl,axtls,winssl,darwinssl} )
+  SSH support:      no      (--with-libssh2)
+  zlib support:     enabled
+  GSS-API support:  no      (--with-gssapi)
+  TLS-SRP support:  no      (--enable-tls-srp)
+  resolver:         default (--enable-ares / --enable-threaded-resolver)
+  IPv6 support:     enabled
+  Unix sockets support: enabled
+  IDN support:      no      (--with-{libidn,winidn})
+  Build libcurl:    Shared=yes, Static=yes
+  Built-in manual:  enabled
+  --libcurl option: enabled (--disable-libcurl-option)
+  Verbose errors:   enabled (--disable-verbose)
+  SSPI support:     no      (--enable-sspi)
+  ca cert bundle:   /etc/ssl/certs/ca-certificates.crt
+  ca cert path:     no
+  LDAP support:     no      (--enable-ldap / --with-ldap-lib / --with-lber-lib)
+  LDAPS support:    no      (--enable-ldaps)
+  RTSP support:     enabled
+  RTMP support:     no      (--with-librtmp)
+  metalink support: no      (--with-libmetalink)
+  PSL support:      no      (libpsl not found)
+  HTTP2 support:    disabled (--with-nghttp2)
+  Protocols:        DICT FILE FTP GOPHER HTTP IMAP POP3 RTSP SMTP TELNET TFTP

@@ -5,6 +5,48 @@
 #include <unistd.h>
 #include <curl/curl.h>
 
+#define BSIZE	1024
+static char	combuf[BSIZE];
+
+static
+int setup_childpipe(int *to, int *from)
+{
+    int	cc;
+    close(0); //close stdin
+    cc = dup(to[0]); //connect pipe
+    if (cc != 0) goto err_return;
+    close(1); //close stdout
+    cc = dup(from[1]); //connect pipe
+    if (cc != 1) goto err_return;
+    return 0;
+err_return:
+    return -1;
+}
+
+static int
+put_cmd(FILE *wfp, int rfd, const char *fmt, char *arg)
+{
+    int		cc, sz;
+
+    fprintf(wfp, fmt, arg); fflush(wfp);
+    sz = read(rfd, combuf, BSIZE);
+    if (sz <= 0) {
+	perror("Something wrong\n");
+	exit(-1);
+    }
+    DBG {
+	cc = write(1, "return= ", strlen("return= "));
+	if (cc != strlen("return= ")) {
+	    perror("Something wrong\n");
+	    exit(-1);
+	}
+	sz = write(1, combuf, sz);
+    } else {
+	sz = 0;
+    }
+    return sz;
+}
+
 static struct timeval
 getTime()
 {
@@ -25,13 +67,22 @@ duration(struct timeval start, struct timeval end)
     return sec;
 }
 
+/*
+ *	Just In Time Data Transfer
+ *	13/08/2016 Adding sftp protocol
+ *			by Yutaka Ishikawa, RIKEN AICS, 
+ *	15/12/2015 Created
+ *			by Yutaka Ishikawa, RIKEN AICS,yutaka.ishikawa@riken.jp
+ */
 int
 trans_type(char *url)
 {
     if (!strncmp(url, "http:", 5)) {
 	return TRANS_HTTP;
-    } else if (!strncmp(url, "ssh:", 4)) {
+    } else if (!strncmp(url, "scp:", 4) || !strncmp(url, "ssh:", 4)) {
 	return TRANS_SCP;
+    } else if (!strncmp(url, "sftp:", 5)) {
+	return TRANS_SFTP;
     } else if (!strncmp(url, "lock:", 5)) {
 	return TRANS_LOCK;
     }
@@ -65,31 +116,37 @@ scp_put(char *url, char *fname)
     return sec;
 }
 
+
 double
 sftp_put(char *url, char *fname)
 {
     static int	first = 0;
     static FILE	*wfp = NULL;
+    static int	rfd;
     int		pid;
-    int		pipefd[2];
+    int		to_sftp[2];
+    int		from_sftp[2];
+    int		cc;
     struct timeval	start, end;
     double		sec;
 
     start = getTime();
     if (first == 0) {
 	first = 1;
-	if (pipe(pipefd) == -1) {
+	if (pipe(to_sftp) == -1 || pipe(from_sftp) == -1) {
 	    perror("Creating pipe: failed");
 	    exit(-1);
 	}
 	if ((pid = fork()) == 0) {
-	    int		cc;
 	    /* child */
-	    close(pipefd[1]); //close write side from parents
-            close(0); //close stdin
-            dup(pipefd[0]); //connect pipe
+	    // close(pipefd[1]); //close write side from parents
+	    if (setup_childpipe(to_sftp, from_sftp) < 0) {
+		fprintf(stderr, "Cannot set up file descriptor\n");
+		exit(-1);
+	    }
 	    cc = execl("/usr/bin/sftp", "sftp",
-		       "-b", "-", "-o", "Compression=yes", NULL);
+		       "-b", "-", "-o", "Compression=yes", 
+		       &url[strlen("sftp:")], NULL);
 	    if (cc < 0) {
 		perror("Cannot exec sftp");
 		exit(cc);
@@ -98,14 +155,15 @@ sftp_put(char *url, char *fname)
 	    perror("Creating pipe: failed");
 	    exit(-1);
 	}
-	close(pipefd[0]);
-	wfp = fdopen(pipefd[1], "w");
+	rfd = from_sftp[0]; close(from_sftp[1]);
+	wfp = fdopen(to_sftp[1], "w");	close(to_sftp[0]);
     }
     if (wfp == NULL) {
 	perror("Something wrong\n");
 	exit(-1);
     }
-    fprintf(wfp, "put %s\n", fname); fflush(wfp);
+    put_cmd(wfp, rfd, "put %s\n", fname);
+    put_cmd(wfp, rfd, "pwd\n", NULL);
     end = getTime();
     sec = duration(start, end);
     return sec;

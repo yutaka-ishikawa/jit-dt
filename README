@@ -1,6 +1,6 @@
 1) Requirement libraries
-   libmicrohttdpd for server
-   libcurl for client
+  - libmicrohttdpd for server
+  - libcurl for client
   $ sudo apt-get install curl libc6 libcurl3 zlib1g
 
 2) Installation
@@ -12,4 +12,10 @@
    $ make
 
 3) How to use watch_and_transfer
-  
+  The watch_and_transfer tool provides http, scp, and sftp protocols.
+  3-1) An example of http
+   $ ./watch_and_transfer http://xxx.aics.riken.jp <watching directory path> -v
+  3-2) An example of scp
+   $ ./watch_and_transfer scp:yisikawa@seg-gw.nict.go.jp ~/tmp/ -v
+  3-3) An example of sftp
+   $ ./watch_and_transfer sftp:yisikawa@seg-gw.nict.go.jp ~/tmp/ -v
