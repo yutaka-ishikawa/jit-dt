@@ -1,0 +1,15 @@
+1) Requirement libraries
+   libmicrohttdpd for server
+   libcurl for client
+  $ sudo apt-get install curl libc6 libcurl3 zlib1g
+
+2) Installation
+  2-1) For client only
+   $ make watch_and_transfer
+   or
+   $ make watch_and_transfer2
+  2-2) For client and server
+   $ make
+
+3) How to use watch_and_transfer
+  
