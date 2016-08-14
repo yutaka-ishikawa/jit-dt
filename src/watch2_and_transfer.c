@@ -24,6 +24,7 @@
 #define BUFSIZE		(PATH_MAX + 1 + sizeof(struct inotify_event))
 int	vflag;
 int	dflag;
+int	kflag;
 
 fd_set	readfds;
 int	curdir;
@@ -35,8 +36,10 @@ char	avpath[PATH_MAX];
 static void
 terminate(int num)
 {
-    fprintf(stderr, "sftp_terminate\n");
-    sftp_terminate();
+    if (kflag) {
+	fprintf(stderr, "sftp_terminate\n");
+	sftp_terminate();
+    }
 }
 
 static int
@@ -67,10 +70,10 @@ main(int argc, char **argv)
     struct stat		 sbuf;
     struct inotify_event *iep = (struct inotify_event *) nevtbuf;
 
-    if (argc < 3 || argc > 7) {
+    if (argc < 3 || argc > 8) {
 	fprintf(stderr,
 		"USAGE: %s <url> <watching directory path>"
-		"[-s start directory path] [-d] [-v]\n",
+		"[-s start directory path] [-k] [-d] [-v]\n",
 		argv[0]);
 	fprintf(stderr, "e.g.:\n");
 	fprintf(stderr, "%s scp://kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
@@ -90,7 +93,7 @@ main(int argc, char **argv)
     fformat(wapath);
     dflag = 0; vflag = 0; wdirs[0][0] = 0;
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "dvs:")) != -1) {
+	while ((opt = getopt(argc, argv, "kdvs:")) != -1) {
 	    switch (opt) {
 	    case 'd': dflag = 1; break;
 	    case 'v': vflag = 1; break;
@@ -101,6 +104,10 @@ main(int argc, char **argv)
 		    return -1;
 		}
 		strcpy(wdirs[0], optarg);
+		break;
+	    case 'k':
+		kflag = 1;
+		sftp_keep_process();
 		break;
 	    }
 	}
@@ -129,7 +136,7 @@ main(int argc, char **argv)
 	    *idx = 0;
 	    strcpy(avpath, wdirs[curdir]);
 	    strcat(avpath, sp);
-	    printf("DIR:%s\n", avpath);
+	    DBG { fprintf(stderr, "DIR:%s\n", avpath); }
 	    curdir = add_watch(ntfydir, avpath, IN_CREATE);
 	    strcpy(wdirs[curdir], avpath);
 	    fformat(wdirs[curdir]);

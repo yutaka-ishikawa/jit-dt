@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <curl/curl.h>
 
 double (*ttable[TRANS_TMAX])(char*, char*) =
@@ -21,6 +22,7 @@ double (*ttable[TRANS_TMAX])(char*, char*) =
 #define BSIZE	1024
 static char	combuf[BSIZE];
 static int	sftpid = 0;
+static int	sftp_keep_proc;
 
 static
 int setup_childpipe(int *to, int *from)
@@ -133,6 +135,12 @@ sftp_terminate()
     if (sftpid) kill(sftpid, SIGKILL);
 }
 
+void
+sftp_keep_process()
+{
+    sftp_keep_proc = 1;
+}
+
 double
 sftp_put(char *url, char *fname)
 {
@@ -159,7 +167,10 @@ sftp_put(char *url, char *fname)
 	} else {
 	    remote = 0;
 	}
-	if (pipe(to_sftp) == -1 || pipe(from_sftp) == -1) {
+    }
+    if (first == 1 || sftp_keep_proc == 0) {
+	first = 2;
+    	if (pipe(to_sftp) == -1 || pipe(from_sftp) == -1) {
 	    perror("Creating pipe: failed");
 	    exit(-1);
 	}
@@ -170,7 +181,8 @@ sftp_put(char *url, char *fname)
 		exit(-1);
 	    }
 	    cc = execl("/usr/bin/sftp", "sftp",
-		       "-b", "-", "-o", "Compression=yes", 
+		       "-b", "-",
+		       "-o", "Compression=yes", 
 		       &url[strlen("sftp:")], NULL);
 	    if (cc < 0) {
 		perror("Cannot exec sftp");
@@ -183,6 +195,7 @@ sftp_put(char *url, char *fname)
 	printf("sftpid = %d\n", sftpid);
 	rfd = from_sftp[0]; close(from_sftp[1]);
 	wfp = fdopen(to_sftp[1], "w");	close(to_sftp[0]);
+	fprintf(stderr, "rfd(%d) wfd(%d)\n", from_sftp[0], to_sftp[1]);
     }
     if (wfp == NULL) {
 	perror("Something wrong\n");
@@ -197,7 +210,14 @@ sftp_put(char *url, char *fname)
 	fprintf(stderr, "sftp dies\n");
 	exit(-1);
     }
-    put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
+    if (sftp_keep_proc) {
+	put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
+    } else {
+	int	stat;
+	put_cmd(wfp, rfd, "quit\n", NULL, NULL);
+	close(rfd); fclose(wfp);
+	waitpid(sftpid, &stat, 0);
+    }
     end = getTime();
     sec = duration(start, end);
     return sec;

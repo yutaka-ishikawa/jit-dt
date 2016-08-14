@@ -21,4 +21,5 @@ extern double	scp_put(char *url, char *fname);
 extern double	sftp_put(char *url, char *fname);
 extern double	locked_move(char *url, char *fname);
 extern double (*ttable[TRANS_TMAX])(char*, char*);
+extern void	sftp_keep_process();
 extern void	sftp_terminate();

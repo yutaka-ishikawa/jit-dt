@@ -14,20 +14,20 @@
 3) How to use watch_and_transfer
   The watch_and_transfer tool provides http, scp, and sftp protocols.
   3-1) An example of http
-   $ ./watch_and_transfer http://xxx.aics.riken.jp <watching directory path> -v
+   $ ./watch2_and_transfer http://xxx.aics.riken.jp <watching directory path> -v
 
   3-2) An example of scp
    In case of keeping the same file name in the remote machine
-   $ ./watch_and_transfer scp:yisikawa@seg-gw.nict.go.jp ~/tmp/ -v
+   $ ./watch2_and_transfer scp:yisikawa@seg-gw.nict.go.jp ~/tmp/ -v
 
    In case of the remote file name is specified. In this case, the remote
    file is overwritten when a new data is transferred.
-   $ ./watch_and_transfer scp:yisikawa@seg-gw.nict.go.jp:data ~/tmp/ -v
+   $ ./watch2_and_transfer scp:yisikawa@seg-gw.nict.go.jp:data ~/tmp/ -v
 
   3-3) An example of sftp
    In case of keeping the same file name in the remote machine
-   $ ./watch_and_transfer sftp:yisikawa@seg-gw.nict.go.jp ~/tmp/ -v
+   $ ./watch2_and_transfer sftp:yisikawa@seg-gw.nict.go.jp ~/tmp/ -v
 
    In case of the remote file name is specified. In this case, the remote
    file is overwritten when a new data is transferred.
-   $ ./watch_and_transfer sftp:yisikawa@seg-gw.nict.go.jp:data ~/tmp/ -v
+   $ ./watch2_and_transfer sftp:yisikawa@seg-gw.nict.go.jp:data ~/tmp/ -v
