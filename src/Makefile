@@ -8,7 +8,7 @@ LDFLAGS_CLIENT2 = ../curl-7.46.0/lib/.libs/libcurl.a clk.o -lz
 .c.o:
 	$(CC) $(CCFLAGS) -c $< -DDEBUG
 
-all: http_daemon http_put watch_and_transfer
+all: http_daemon http_put watch_and_transfer watch2_and_transfer
 http_daemon: http_daemon.o
 	$(CC) -o http_daemon http_daemon.o $(LDFLAGS_SERVER) 
 http_daemon2: http_daemon.o clk.o
@@ -19,6 +19,8 @@ http_put2: http_put.o clk.o
 	$(CC) -o http_put http_put.o $(LDFLAGS_CLIENT2)
 watch_and_transfer: watch_and_transfer.o translib.o
 	$(CC) -o watch_and_transfer watch_and_transfer.o translib.o $(LDFLAGS_CLIENT1)
+watch2_and_transfer: watch2_and_transfer.o translib.o
+	$(CC) -o watch2_and_transfer watch2_and_transfer.o translib.o $(LDFLAGS_CLIENT1)
 watch_and_transfer2: watch_and_transfer.o translib.o clk.o
 	$(CC) -o watch_and_transfer watch_and_transfer.o translib.o $(LDFLAGS_CLIENT2)
 watch_and_transfer.o : translib.h

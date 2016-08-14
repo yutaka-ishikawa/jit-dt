@@ -105,11 +105,11 @@ main(int argc, char **argv)
 	    perror("read");
 	    exit(-1);
 	}
+	iep = (struct inotify_event *) buf;
 	DBG {
 	    fprintf(stderr, "sz(%ld) len(%d) name(%s)\n",
 		    sz, iep->len, iep->name);
 	}
-	iep = (struct inotify_event *) buf;
 	strcpy(avpath, wapath);
 	strcat(avpath, iep->name);
 	VMODE {

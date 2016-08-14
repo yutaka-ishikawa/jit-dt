@@ -5,6 +5,10 @@
 #include <unistd.h>
 #include <curl/curl.h>
 
+double (*ttable[TRANS_TMAX])(char*, char*) =
+{ http_put, scp_put, sftp_put, locked_move };
+
+
 #define BSIZE	1024
 static char	combuf[BSIZE];
 
@@ -97,7 +101,11 @@ scp_put(char *url, char *fname)
     int			cc;
     double		sec;
 
-    sprintf(cmdbuf, "scp %s %s:", fname, &url[strlen("ssh:")]);
+    if (index(url, ':')) {
+	sprintf(cmdbuf, "scp %s %s", fname, &url[strlen("ssh:")]);
+    } else {
+	sprintf(cmdbuf, "scp %s %s:", fname, &url[strlen("ssh:")]);
+    }
     DBG {
 	fprintf(stderr, "cmd=%s\n", cmdbuf);
     }
