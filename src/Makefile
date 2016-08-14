@@ -4,7 +4,7 @@ CCFLAGS = -O3 -Wall -g -c -I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0
 LDFLAGS_SERVER = ../libmicrohttpd-0.9.47/src/microhttpd/.libs/libmicrohttpd.a \
 	-L~/local/lib -lgcrypt -lgnutls -lpthread
 LDFLAGS_CLIENT1 = ../curl-7.46.0/lib/.libs/libcurl.a -lssl -lcrypto -lz
-LDFLAGS_CLIENT2 = ../curl-7.46.0/lib/.libs/libcurl.a clk.o -lz
+LDFLAGS_CLIENT2 = ../curl-7.46.0/lib/.libs/libcurl.a clk.o  -lssl -lcrypto -lz
 .c.o:
 	$(CC) $(CCFLAGS) -c $< -DDEBUG
 
@@ -23,6 +23,8 @@ watch2_and_transfer: watch2_and_transfer.o translib.o
 	$(CC) -o watch2_and_transfer watch2_and_transfer.o translib.o $(LDFLAGS_CLIENT1)
 watch_and_transfer2: watch_and_transfer.o translib.o clk.o
 	$(CC) -o watch_and_transfer watch_and_transfer.o translib.o $(LDFLAGS_CLIENT2)
+watch2_and_transfer2: watch2_and_transfer.o translib.o clk.o
+	$(CC) -o watch2_and_transfer watch2_and_transfer.o translib.o $(LDFLAGS_CLIENT2)
 watch_and_transfer.o : translib.h
 translib.o : translib.h
 tar:
