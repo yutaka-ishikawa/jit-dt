@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/inotify.h>
+#include <signal.h>
 
 //#define PATH_WATCH	"/home/ishikawa/tmp/123"
 #define PATH_WATCH	"./"
@@ -25,6 +26,14 @@ char	wapath[NAME_MAX];
 char	avpath[NAME_MAX];
 int	vflag;
 int	dflag;
+
+static void
+terminate(int num)
+{
+    fprintf(stderr, "sftp_terminate\n");
+    sftp_terminate();
+}
+
 
 int
 main(int argc, char **argv)
@@ -87,16 +96,12 @@ main(int argc, char **argv)
 	perror("inotify_init:");
 	exit(-1);
     }
-    /*
-     * According to the manual, inotify_add_watch returns a watch descriptor,
-     * but acctuallly returns result condition. Be sure the Linux version.
-     */
-//    cc = inotify_add_watch(notifyfd, PATH_WATCH, IN_CREATE|IN_CLOSE_WRITE);
     cc = inotify_add_watch(notifyfd, wapath, IN_CLOSE_WRITE);
     if (cc < 0) {
  	perror("inotify_add_watch:");
 	exit(-1);
     }
+    signal(SIGINT, terminate);
     VMODE {
 	fprintf(stderr, "now watching %s\n", wapath);
     }
