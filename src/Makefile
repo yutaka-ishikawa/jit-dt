@@ -1,5 +1,5 @@
 CC = gcc
-CCFLAGS = -O3 -Wall -c -I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0/include/
+CCFLAGS = -O3 -Wall -g -c -I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0/include/
 #LDFLAGS = -L../libmicrohttpd-0.9.47/src/microhttpd/.libs -lmicrohttpd
 LDFLAGS_SERVER = ../libmicrohttpd-0.9.47/src/microhttpd/.libs/libmicrohttpd.a \
 	-L~/local/lib -lgcrypt -lgnutls -lpthread

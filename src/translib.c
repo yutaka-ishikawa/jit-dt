@@ -1,8 +1,17 @@
+/*
+ *	Just In Time Data Transfer
+ *	13/08/2016 Adding sftp protocol
+ *			by Yutaka Ishikawa, RIKEN AICS, 
+ *	15/12/2015 Created
+ *			by Yutaka Ishikawa, RIKEN AICS,yutaka.ishikawa@riken.jp
+ */
 #include "translib.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <signal.h>
 #include <curl/curl.h>
 
 double (*ttable[TRANS_TMAX])(char*, char*) =
@@ -11,6 +20,7 @@ double (*ttable[TRANS_TMAX])(char*, char*) =
 
 #define BSIZE	1024
 static char	combuf[BSIZE];
+static int	sftpid = 0;
 
 static
 int setup_childpipe(int *to, int *from)
@@ -28,15 +38,15 @@ err_return:
 }
 
 static int
-put_cmd(FILE *wfp, int rfd, const char *fmt, char *arg)
+put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
 {
     int		cc, sz;
 
-    fprintf(wfp, fmt, arg); fflush(wfp);
+    printf(fmt, a1, a2);
+    fprintf(wfp, fmt, a1, a2); fflush(wfp);
     sz = read(rfd, combuf, BSIZE);
     if (sz <= 0) {
-	perror("Something wrong\n");
-	exit(-1);
+	return -1;
     }
     DBG {
 	cc = write(1, "return= ", strlen("return= "));
@@ -44,9 +54,9 @@ put_cmd(FILE *wfp, int rfd, const char *fmt, char *arg)
 	    perror("Something wrong\n");
 	    exit(-1);
 	}
-	sz = write(1, combuf, sz);
-    } else {
-	sz = 0;
+	if (sz != write(1, combuf, sz)) {
+	    perror("write:"); exit(-1);
+	}
     }
     return sz;
 }
@@ -71,13 +81,6 @@ duration(struct timeval start, struct timeval end)
     return sec;
 }
 
-/*
- *	Just In Time Data Transfer
- *	13/08/2016 Adding sftp protocol
- *			by Yutaka Ishikawa, RIKEN AICS, 
- *	15/12/2015 Created
- *			by Yutaka Ishikawa, RIKEN AICS,yutaka.ishikawa@riken.jp
- */
 int
 trans_type(char *url)
 {
@@ -124,14 +127,19 @@ scp_put(char *url, char *fname)
     return sec;
 }
 
+void
+sftp_terminate()
+{
+    if (sftpid) kill(sftpid, SIGKILL);
+}
 
 double
 sftp_put(char *url, char *fname)
 {
     static int	first = 0;
+    static char	*remote;
     static FILE	*wfp = NULL;
     static int	rfd;
-    int		pid;
     int		to_sftp[2];
     int		from_sftp[2];
     int		cc;
@@ -140,14 +148,23 @@ sftp_put(char *url, char *fname)
 
     start = getTime();
     if (first == 0) {
+	char	*idx;
 	first = 1;
+	atexit(sftp_terminate);
+	idx = index(url, ':'); /* skiping sftp: */
+	if ((idx = index(idx + 1, ':')) != NULL) {
+	    /* remote file name is specified */
+	    *idx = 0;
+	    remote = idx + 1;
+	} else {
+	    remote = 0;
+	}
 	if (pipe(to_sftp) == -1 || pipe(from_sftp) == -1) {
 	    perror("Creating pipe: failed");
 	    exit(-1);
 	}
-	if ((pid = fork()) == 0) {
+	if ((sftpid = fork()) == 0) {
 	    /* child */
-	    // close(pipefd[1]); //close write side from parents
 	    if (setup_childpipe(to_sftp, from_sftp) < 0) {
 		fprintf(stderr, "Cannot set up file descriptor\n");
 		exit(-1);
@@ -159,10 +176,11 @@ sftp_put(char *url, char *fname)
 		perror("Cannot exec sftp");
 		exit(cc);
 	    }
-	} else if (pid < 0) {
+	} else if (sftpid < 0) {
 	    perror("Creating pipe: failed");
 	    exit(-1);
 	}
+	printf("sftpid = %d\n", sftpid);
 	rfd = from_sftp[0]; close(from_sftp[1]);
 	wfp = fdopen(to_sftp[1], "w");	close(to_sftp[0]);
     }
@@ -170,8 +188,16 @@ sftp_put(char *url, char *fname)
 	perror("Something wrong\n");
 	exit(-1);
     }
-    put_cmd(wfp, rfd, "put %s\n", fname);
-    put_cmd(wfp, rfd, "pwd\n", NULL);
+    if (remote) {
+	cc = put_cmd(wfp, rfd, "put %s %s\n", fname, remote);
+    } else {
+	cc = put_cmd(wfp, rfd, "put %s\n", fname, NULL);
+    }
+    if (cc < 0) {
+	fprintf(stderr, "sftp dies\n");
+	exit(-1);
+    }
+    put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
     end = getTime();
     sec = duration(start, end);
     return sec;

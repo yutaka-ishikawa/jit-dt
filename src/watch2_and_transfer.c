@@ -17,21 +17,38 @@
 #include <fcntl.h>
 #include <sys/inotify.h>
 #include <sys/select.h>
+#include <signal.h>
 
 #define MAX_DIRS	(24*60*2+1)
-//#define PATH_WATCH	"/home/ishikawa/tmp/123"
 #define PATH_WATCH	"./"
 #define BUFSIZE		(PATH_MAX + 1 + sizeof(struct inotify_event))
-char	nevtbuf[BUFSIZE];
-char	wapath[PATH_MAX];
-char	avpath[PATH_MAX];
 int	vflag;
 int	dflag;
 
 fd_set	readfds;
-char	wdirs[MAX_DIRS][PATH_MAX];
 int	curdir;
+char	wdirs[MAX_DIRS][PATH_MAX]; /* wdirs[0] is used for stating path */
+char	nevtbuf[BUFSIZE];
+char	wapath[PATH_MAX];
+char	avpath[PATH_MAX];
 
+static void
+terminate(int num)
+{
+    fprintf(stderr, "sftp_terminate\n");
+    sftp_terminate();
+}
+
+static int
+add_watch(int fd, const char *path, uint32_t mask)
+{
+    int	cc;
+    /* inotify_add_watch returns a watch descriptor starts from 1 */
+    if ((cc = inotify_add_watch(fd, path, mask)) < 0) {
+ 	perror("inotify_add_watch:"); exit(-1);
+    }
+    return cc;
+}
 static void
 fformat(char *path)
 {
@@ -50,12 +67,18 @@ main(int argc, char **argv)
     struct stat		 sbuf;
     struct inotify_event *iep = (struct inotify_event *) nevtbuf;
 
-    if (argc < 3 || argc > 5) {
+    if (argc < 3 || argc > 7) {
 	fprintf(stderr,
-		"USAGE: %s <url> <watching directory path> [-d] [-v]\n",
+		"USAGE: %s <url> <watching directory path>"
+		"[-s start directory path] [-d] [-v]\n",
 		argv[0]);
-	fprintf(stderr, "e.g.: %s http://kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
-		"            /home/yisikawa/work/FileTransfer/tmp/\n", argv[0]);
+	fprintf(stderr, "e.g.:\n");
+	fprintf(stderr, "%s scp://kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
+		"            /home/yisikawa/work/JIT-DT/tmp/\n", argv[0]);
+	fprintf(stderr, "%s scp://kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
+		"            /home/yisikawa/work/JIT-DT/tmp/\\\n"
+		"            -s 00/10/20/\n",
+		argv[0]);
 	return -1;
     }
     if (strlen(argv[2]) >= PATH_MAX - 1) {
@@ -65,13 +88,19 @@ main(int argc, char **argv)
     url = argv[1];
     strcpy(wapath, (argc < 3) ? PATH_WATCH : argv[2]);
     fformat(wapath);
-    dflag = 0;
+    dflag = 0; vflag = 0; wdirs[0][0] = 0;
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "dv")) != -1) {
+	while ((opt = getopt(argc, argv, "dvs:")) != -1) {
 	    switch (opt) {
 	    case 'd': dflag = 1; break;
-	    case 'v':
-		vflag = 1;
+	    case 'v': vflag = 1; break;
+	    case 's': 
+		if (strlen(optarg) >= PATH_MAX - 1) {
+		    fprintf(stderr, "Too long start directory path (%ld)\n",
+			    strlen(argv[2]));
+		    return -1;
+		}
+		strcpy(wdirs[0], optarg);
 		break;
 	    }
 	}
@@ -88,15 +117,27 @@ main(int argc, char **argv)
     }
     FD_ZERO(&readfds); FD_SET(ntfydir, &readfds); FD_SET(ntfyfile, &readfds);
     nfds = ntfyfile + 1;
-    /* inotify_add_watch returns a watch descriptor starts from 1 */
-    if ((cc = inotify_add_watch(ntfydir, wapath, IN_CREATE)) < 0) {
- 	perror("inotify_add_watch:"); exit(-1);
-    }
+    cc = add_watch(ntfydir, wapath, IN_CREATE);
     strcpy(wdirs[cc], wapath);
     curdir = cc;
-    if ((cc = inotify_add_watch(ntfyfile, wapath, IN_CLOSE_WRITE)) < 0) {
- 	perror("inotify_add_watch:"); exit(-1);
+    cc = add_watch(ntfyfile, wapath, IN_CLOSE_WRITE);
+    /* starting directory */
+    if (wdirs[0][0]) {
+	char	*idx, *sp = wdirs[0];
+	fformat(sp);
+	while ((idx = index(sp, '/'))) {
+	    *idx = 0;
+	    strcpy(avpath, wdirs[curdir]);
+	    strcat(avpath, sp);
+	    printf("DIR:%s\n", avpath);
+	    curdir = add_watch(ntfydir, avpath, IN_CREATE);
+	    strcpy(wdirs[curdir], avpath);
+	    fformat(wdirs[curdir]);
+	    cc = add_watch(ntfyfile, avpath, IN_CLOSE_WRITE);
+	    sp = idx + 1;
+	}
     }
+    signal(SIGINT, terminate);
     VMODE {
 	fprintf(stderr, "now watching directory %s, dirid(%d)\n",
 		wdirs[curdir], curdir);
@@ -135,14 +176,14 @@ main(int argc, char **argv)
 		inotify_rm_watch(ntfydir, curdir);
 		inotify_rm_watch(ntfyfile, curdir);
 	    }
-	    curdir = inotify_add_watch(ntfydir, avpath, IN_CREATE);
+	    curdir = add_watch(ntfydir, avpath, IN_CREATE);
 	    strcpy(wdirs[curdir], avpath);
 	    fformat(wdirs[curdir]);
 	    VMODE {
 		fprintf(stderr, "now watching directory %s, dirid(%d)\n",
 			wdirs[curdir], curdir);
 	    }
-	    cc = inotify_add_watch(ntfyfile, avpath, IN_CLOSE_WRITE);
+	    cc = add_watch(ntfyfile, avpath, IN_CLOSE_WRITE);
 	} else if (FD_ISSET(ntfyfile, &readfds)) {
 	    /* a new/modified file is closed, IN_CLOSE_WRITE */
 	    if ((sz = read(ntfyfile, nevtbuf, BUFSIZE)) < 0) {
