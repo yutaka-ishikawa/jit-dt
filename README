@@ -31,3 +31,14 @@
    In case of the remote file name is specified. In this case, the remote
    file is overwritten when a new data is transferred.
    $ ./watch2_and_transfer sftp:yisikawa@seg-gw.nict.go.jp:data ~/tmp/ -v
+
+  3-4) The -s option is used in case of the following usage:
+     A file is created under the directory whose path represents created time.
+     For example, a file created at 2016/08/14/15:10 is created
+     under the /mnt/data/2016-08-14/15/10, and another file created
+     at 2016/08/14/16:00 is located under the /mnt/data/2016-08-14/16/00.
+     If the following command starts the data transfer at 16:00 on 2016/08/14.
+     $ ./watch2_and_transfer sftp:yisikawa@seg-gw.nict.go.jp:data \
+       /mnt/data/ -s 2016-08-14/20/ -v
+     That is, it watches directories: /mnt/data/, /mnt/data/2016-08-14,
+     and /mnt/data2016-08-14/20/.
