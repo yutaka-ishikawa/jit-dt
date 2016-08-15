@@ -14,6 +14,7 @@ extern int	dflag;
 #define TRANS_LOCK	3
 #define TRANS_TMAX	4
 #define TRANS_NONE	-1
+#define LCK_FILE	"JITDT-READY"
 
 extern int	trans_type(char *url);
 extern double	http_put(char *url, char *fname);

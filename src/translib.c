@@ -11,18 +11,31 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <signal.h>
+#include <sys/stat.h>
+#include <sys/file.h>
 #include <sys/wait.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <libgen.h>
 #include <curl/curl.h>
 
 double (*ttable[TRANS_TMAX])(char*, char*) =
 { http_put, scp_put, sftp_put, locked_move };
 
 
-#define BSIZE	1024
+#define BSIZE	1024*8
 static char	combuf[BSIZE];
 static int	sftpid = 0;
 static int	sftp_keep_proc;
+static int	lckfd;
+static char	path[PATH_MAX];
+static char	lckpath[PATH_MAX];
+
+static void
+fformat(char *path)
+{
+    if (path[strlen(path) - 1] != '/') strcat(path, "/");
+}
 
 static
 int setup_childpipe(int *to, int *from)
@@ -223,9 +236,87 @@ sftp_put(char *url, char *fname)
     return sec;
 }
 
+void
+locked_lock(char *url)
+{
+    static int	first = 0;
+    int		cc;
+
+    if (first == 0) {
+	first = 1;
+	if (strncmp(url, "lock:", 5) != 0) {
+	    fprintf(stderr, "The url does not start \"lock:\" string\n");
+	    exit(-1);
+	}
+	strcpy(lckpath, &url[strlen("lock:")]);
+	fformat(path);
+	strcat(lckpath, LCK_FILE);
+    }
+    if ((lckfd = open(lckpath, O_CREAT|O_RDWR, 0666)) < 0) {
+	fprintf(stderr, "Lock file %s cannot be created\n", LCK_FILE);
+	perror("open");
+	exit(-1);
+    }
+    if ((cc = flock(lckfd, LOCK_EX)) < 0) {
+	fprintf(stderr, "Lock file %s cannot be locked\n", LCK_FILE);
+	perror("flock");
+	exit(-1);
+    }
+}
+
+void
+locked_unlock()
+{
+    int	cc;
+    if ((cc = close(lckfd)) < 0) {
+	fprintf(stderr, "Somthing wrong in closing lock file %s\n", LCK_FILE);
+	perror("close");
+    }
+}
+
+void
+locked_write(char *info)
+{
+    int	cc;
+    if ((cc = write(lckfd, info, strlen(info) + 1)) < 0) {
+	fprintf(stderr, "Cannot write data in lock file %s\n", LCK_FILE);
+	perror("write");
+    }
+}
+
 double
 locked_move(char *url, char *fname)
 {
+    int		rfd, wfd;
+    char	*sp;
+    ssize_t	szr, szw = 0;
+
+    /* lock */
+    locked_lock(url);
+    if ((rfd = open(fname, O_RDONLY)) < 0) {
+	fprintf(stderr, "Cannot open %s\n", fname);
+	exit(-1);
+    }
+    strcpy(path, &url[strlen("lock:")]); fformat(path);
+    sp = basename(fname); strcat(path, sp);
+    if ((wfd = open(path, O_CREAT|O_RDWR, 0666)) < 0) {
+	fprintf(stderr, "Cannot open %s\n", path);
+	exit(-1);
+    }
+    /* copy */
+    while ((szr = read(rfd, combuf, BSIZE)) > 0) {
+	if ((szw = write(wfd, combuf, szr)) != szr) break;
+    }
+    if (szr < 0 || (szr != 0 && szw != szr)) {
+	fprintf(stderr, "Error on copying from %s to %s\n", fname, path);
+	(szr < 0) ? perror("read") : perror("write");
+	exit(-1);
+    }
+    /* remove */
+    unlink(fname);
+    /* write and unlock */
+    locked_write(fname);
+    locked_unlock();
     return 0;
 }
 
