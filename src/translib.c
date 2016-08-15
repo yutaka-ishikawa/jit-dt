@@ -1,11 +1,11 @@
 /*
  *	Just In Time Data Transfer
+ *	15/08/2016 Adding locked move function, Yutaka Ishikawa
  *	13/08/2016 Adding sftp protocol
  *			by Yutaka Ishikawa, RIKEN AICS, 
  *	15/12/2015 Created
  *			by Yutaka Ishikawa, RIKEN AICS,yutaka.ishikawa@riken.jp
  */
-#include "translib.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,24 +18,17 @@
 #include <signal.h>
 #include <libgen.h>
 #include <curl/curl.h>
+#include "translib.h"
 
-double (*ttable[TRANS_TMAX])(char*, char*) =
+double (*ttable[TRANS_TMAX])(char*, char*, char*) =
 { http_put, scp_put, sftp_put, locked_move };
 
 
 #define BSIZE	1024*8
-static char	combuf[BSIZE];
+static char	fnbuf[PATH_MAX]; /* temporary use for locked_move */
+static char	combuf[BSIZE]; /* temporary use */
 static int	sftpid = 0;
 static int	sftp_keep_proc;
-static int	lckfd;
-static char	path[PATH_MAX];
-static char	lckpath[PATH_MAX];
-
-static void
-fformat(char *path)
-{
-    if (path[strlen(path) - 1] != '/') strcat(path, "/");
-}
 
 static
 int setup_childpipe(int *to, int *from)
@@ -96,44 +89,67 @@ duration(struct timeval start, struct timeval end)
     return sec;
 }
 
-int
-trans_type(char *url)
+/*
+ *	scp:ishikawa@aics.riken.jp        | scp:ishikawa@aics.riken.jp:
+ *	scp:ishikawa@aics.riken.jp:data   | scp:ishikawa@aics.riken.jp:tmp/
+ *	sftp:ishikawa@aics.riken.jp:data  | sftp:ishikawa@aics.riken.jp:tmp/
+ *	lock:/usr/local/var/
+ */
+static int
+parse_url(char *url, char **host, char **rpath, char *proto)
 {
-    if (!strncmp(url, "http:", 5)) {
+    int		sz = strlen(proto);
+    char	*idx;
+    if (strncmp(url, proto, sz) != 0) return 0;
+    if (host) *host = &url[sz];
+    if ((idx = index(*host, ':'))) {
+	*idx = 0;
+	if (rpath) *rpath = idx + 1;
+    }
+    return 1;
+}
+
+int
+trans_type(char *url, char **host, char **rpath)
+{
+    if (parse_url(url, host, rpath, "http:")) {
 	return TRANS_HTTP;
-    } else if (!strncmp(url, "scp:", 4) || !strncmp(url, "ssh:", 4)) {
+    } else if (parse_url(url, host, rpath, "scp:")) {
 	return TRANS_SCP;
-    } else if (!strncmp(url, "sftp:", 5)) {
+    } else if (parse_url(url, host, rpath, "ssh:")) {
+	return TRANS_SCP;
+    } else if (parse_url(url, host, rpath, "sftp:")) {
 	return TRANS_SFTP;
-    } else if (!strncmp(url, "lock:", 5)) {
+    } else if (parse_url(url, rpath, 0, "lock:")) {
 	return TRANS_LOCK;
+    } else if (index(url, ':')) {
+	return TRANS_UNKNOWN;
     }
     return TRANS_NONE;
 }
 
 double
-scp_put(char *url, char *fname)
+scp_put(char *host, char *rpath, char *fname)
 {
-    char		cmdbuf[NAME_MAX];
     struct timeval	start, end;
     int			cc;
     double		sec;
 
-    if (index(url, ':')) {
-	sprintf(cmdbuf, "scp %s %s", fname, &url[strlen("ssh:")]);
+    if (rpath) {
+	sprintf(combuf, "scp %s %s:%s", fname, host, rpath);
     } else {
-	sprintf(cmdbuf, "scp %s %s:", fname, &url[strlen("ssh:")]);
+	sprintf(combuf, "scp %s %s:", fname, host);
     }
     DBG {
-	fprintf(stderr, "cmd=%s\n", cmdbuf);
+	fprintf(stderr, "cmd=%s\n", combuf);
     }
     start = getTime();
-    cc = system(cmdbuf);
+    cc = system(combuf);
     if (cc != 0) {
 	if (cc == -1) {
-	    fprintf(stderr, "Cannot invoke command: %s\n", cmdbuf);
+	    fprintf(stderr, "Cannot invoke command: %s\n", combuf);
 	} else {
-	    fprintf(stderr, "Return code %d of command: %s\n", cc, cmdbuf);
+	    fprintf(stderr, "Return code %d of command: %s\n", cc, combuf);
 	}
 	return -1;
     }
@@ -155,10 +171,9 @@ sftp_keep_process()
 }
 
 double
-sftp_put(char *url, char *fname)
+sftp_put(char *host, char *rpath, char *fname)
 {
     static int	first = 0;
-    static char	*remote;
     static FILE	*wfp = NULL;
     static int	rfd;
     int		to_sftp[2];
@@ -169,17 +184,8 @@ sftp_put(char *url, char *fname)
 
     start = getTime();
     if (first == 0) {
-	char	*idx;
 	first = 1;
 	atexit(sftp_terminate);
-	idx = index(url, ':'); /* skiping sftp: */
-	if ((idx = index(idx + 1, ':')) != NULL) {
-	    /* remote file name is specified */
-	    *idx = 0;
-	    remote = idx + 1;
-	} else {
-	    remote = 0;
-	}
     }
     if (first == 1 || sftp_keep_proc == 0) {
 	first = 2;
@@ -196,7 +202,7 @@ sftp_put(char *url, char *fname)
 	    cc = execl("/usr/bin/sftp", "sftp",
 		       "-b", "-",
 		       "-o", "Compression=yes", 
-		       &url[strlen("sftp:")], NULL);
+		       host, NULL);
 	    if (cc < 0) {
 		perror("Cannot exec sftp");
 		exit(cc);
@@ -214,9 +220,19 @@ sftp_put(char *url, char *fname)
 	perror("Something wrong\n");
 	exit(-1);
     }
-    if (remote) {
-	cc = put_cmd(wfp, rfd, "put %s %s\n", fname, remote);
+    if (rpath) {
+	char	*idx, *base;
+	strcpy(combuf, fname);
+	base = basename(combuf);
+	strcpy(fnbuf, rpath);
+	if ((idx = rindex(rpath, '/')) && *(idx + 1) == 0) {
+	    /* last '/' means a directory */
+	    strcat(fnbuf, base);
+	} /* including a file name */
+	DBG { fprintf(stderr, "put %s %s\n", fname, fnbuf); }
+	cc = put_cmd(wfp, rfd, "put %s %s\n", fname, fnbuf);
     } else {
+	DBG { fprintf(stderr, "put %s\n", fname); }
 	cc = put_cmd(wfp, rfd, "put %s\n", fname, NULL);
     }
     if (cc < 0) {
@@ -236,71 +252,29 @@ sftp_put(char *url, char *fname)
     return sec;
 }
 
-void
-locked_lock(char *url)
-{
-    static int	first = 0;
-    int		cc;
-
-    if (first == 0) {
-	first = 1;
-	if (strncmp(url, "lock:", 5) != 0) {
-	    fprintf(stderr, "The url does not start \"lock:\" string\n");
-	    exit(-1);
-	}
-	strcpy(lckpath, &url[strlen("lock:")]);
-	fformat(path);
-	strcat(lckpath, LCK_FILE);
-    }
-    if ((lckfd = open(lckpath, O_CREAT|O_RDWR, 0666)) < 0) {
-	fprintf(stderr, "Lock file %s cannot be created\n", LCK_FILE);
-	perror("open");
-	exit(-1);
-    }
-    if ((cc = flock(lckfd, LOCK_EX)) < 0) {
-	fprintf(stderr, "Lock file %s cannot be locked\n", LCK_FILE);
-	perror("flock");
-	exit(-1);
-    }
-}
-
-void
-locked_unlock()
-{
-    int	cc;
-    if ((cc = close(lckfd)) < 0) {
-	fprintf(stderr, "Somthing wrong in closing lock file %s\n", LCK_FILE);
-	perror("close");
-    }
-}
-
-void
-locked_write(char *info)
-{
-    int	cc;
-    if ((cc = write(lckfd, info, strlen(info) + 1)) < 0) {
-	fprintf(stderr, "Cannot write data in lock file %s\n", LCK_FILE);
-	perror("write");
-    }
-}
-
 double
-locked_move(char *url, char *fname)
+locked_move(char *host, char *rpath, char *fname)
 {
     int		rfd, wfd;
-    char	*sp;
+    char	*idx, *base;
     ssize_t	szr, szw = 0;
 
     /* lock */
-    locked_lock(url);
+    printf("host(%s) rpath(%s) fname(%s)\n", host, rpath, fname);
+    locked_lock(rpath);
     if ((rfd = open(fname, O_RDONLY)) < 0) {
 	fprintf(stderr, "Cannot open %s\n", fname);
 	exit(-1);
     }
-    strcpy(path, &url[strlen("lock:")]); fformat(path);
-    sp = basename(fname); strcat(path, sp);
-    if ((wfd = open(path, O_CREAT|O_RDWR, 0666)) < 0) {
-	fprintf(stderr, "Cannot open %s\n", path);
+    strcpy(combuf, fname);
+    base = basename(combuf);
+    strcpy(fnbuf, rpath);
+    if ((idx = rindex(fnbuf, '/')) && *(idx + 1) == 0) {
+	/* last '/' means a directory */
+	strcat(fnbuf, base);
+    } /* otherwise file name is specified */
+    if ((wfd = open(fnbuf, O_CREAT|O_TRUNC|O_RDWR, 0666)) < 0) {
+	fprintf(stderr, "Cannot create %s\n", fnbuf);
 	exit(-1);
     }
     /* copy */
@@ -308,14 +282,15 @@ locked_move(char *url, char *fname)
 	if ((szw = write(wfd, combuf, szr)) != szr) break;
     }
     if (szr < 0 || (szr != 0 && szw != szr)) {
-	fprintf(stderr, "Error on copying from %s to %s\n", fname, path);
+	fprintf(stderr, "Error on copying from %s to %s\n", fname, fnbuf);
 	(szr < 0) ? perror("read") : perror("write");
 	exit(-1);
     }
+    close(rfd); close(wfd);
     /* remove */
     unlink(fname);
     /* write and unlock */
-    locked_write(fname);
+    locked_write(fnbuf);
     locked_unlock();
     return 0;
 }
@@ -331,8 +306,9 @@ replyhandler(void *ptr, size_t size, size_t nmemb, void *fp)
 }
 
 double
-http_put(char *url, char *fname)
+http_put(char *host, char *rpath, char *fname)
 {
+    char		*url = combuf;
     double		sec;
     CURL		*curl;
     CURLcode		res;
@@ -357,6 +333,9 @@ http_put(char *url, char *fname)
 		 CURLFORM_END);
     curl = curl_easy_init();
     if (curl == NULL) goto err1;
+    strcpy(url, host);
+    if (rpath[0] != '/') strcat(url, "/");
+    strcat(url, rpath);
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, replyhandler);

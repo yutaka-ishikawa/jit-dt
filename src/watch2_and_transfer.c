@@ -1,11 +1,11 @@
 /*
  *	Just In Time Data Transfer
+ *	15/08/2016 Adding locked move function, Yutaka Ishikawa
  *	13/08/2016 Adding sftp protocol
  *			by Yutaka Ishikawa, RIKEN AICS 
  *	15/12/2015 Written by Yutaka Ishikawa, RIKEN AICS
  *			yutaka.ishikawa@riken.jp
  */
-#include "translib.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +18,7 @@
 #include <sys/inotify.h>
 #include <sys/select.h>
 #include <signal.h>
+#include "translib.h"
 
 #define MAX_DIRS	(24*60*2+1)
 #define PATH_WATCH	"./"
@@ -52,17 +53,12 @@ add_watch(int fd, const char *path, uint32_t mask)
     }
     return cc;
 }
-static void
-fformat(char *path)
-{
-    if (path[strlen(path) - 1] != '/') strcat(path, "/");
-}
 
 int
 main(int argc, char **argv)
 {
     int		opt;
-    char	*url;
+    char	*url, *hname, *rpath;
     int		ntfydir, ntfyfile, nfds, curdir, cc;
     int		ttype;
     ssize_t	sz;
@@ -76,9 +72,9 @@ main(int argc, char **argv)
 		"[-s start directory path] [-k] [-d] [-v]\n",
 		argv[0]);
 	fprintf(stderr, "e.g.:\n");
-	fprintf(stderr, "%s scp://kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
+	fprintf(stderr, "%s scp:kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
 		"            /home/yisikawa/work/JIT-DT/tmp/\n", argv[0]);
-	fprintf(stderr, "%s scp://kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
+	fprintf(stderr, "%s scp:kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
 		"            /home/yisikawa/work/JIT-DT/tmp/\\\n"
 		"            -s 00/10/20/\n",
 		argv[0]);
@@ -116,7 +112,14 @@ main(int argc, char **argv)
 	fprintf(stderr, "IN_CREATE=0x%x IN_WRITE=0x%x\n",
 		IN_CREATE, IN_CLOSE_WRITE);
     }
-    ttype = trans_type(url);
+    hname = NULL; rpath = NULL;
+    ttype = trans_type(url, &hname, &rpath);
+    if (ttype < 0) {
+	(ttype == TRANS_UNKNOWN) ?
+	    fprintf(stderr, "Unknown transfer method: %s\n", url)
+	    : fprintf(stderr, "No transfer method is specified");
+	exit(-1);
+    }
     ntfydir = inotify_init();  ntfyfile = inotify_init();
     if (ntfydir < 0 || ntfyfile < 0) {
 	perror("inotify_init:");
@@ -199,7 +202,7 @@ main(int argc, char **argv)
 	    if (iep->mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
 	    strcpy(avpath, wdirs[iep->wd]);
 	    strcat(avpath, iep->name);
-	    sec = (*ttable[ttype])(url, avpath);
+	    sec = (*ttable[ttype])(hname, rpath, avpath);
 	    VMODE {
 		fprintf(stderr, "%s, %f\n", avpath, sec); fflush(stderr);
 	    }

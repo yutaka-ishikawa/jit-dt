@@ -1,11 +1,11 @@
 /*
  *	Just In Time Data Transfer
+ *	15/08/2016 Adding locked move function, Yutaka Ishikawa
  *	13/08/2016 Adding sftp protocol
  *			by Yutaka Ishikawa, RIKEN AICS 
  *	15/12/2015 Written by Yutaka Ishikawa, RIKEN AICS
  *			yutaka.ishikawa@riken.jp
  */
-#include "translib.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <sys/inotify.h>
 #include <signal.h>
+#include "translib.h"
 
 //#define PATH_WATCH	"/home/ishikawa/tmp/123"
 #define PATH_WATCH	"./"
@@ -39,7 +40,7 @@ int
 main(int argc, char **argv)
 {
     int		opt;
-    char	*url;
+    char	*url, *hname, *rpath;
     int		notifyfd, cc;
     int		ttype;
     ssize_t	sz;
@@ -87,9 +88,13 @@ main(int argc, char **argv)
 	fprintf(stderr, "IN_CREATE=0x%x IN_WRITE=0x%x\n",
 		IN_CREATE, IN_CLOSE_WRITE);
     }
-
-    ttype = trans_type(url);
-    if (ttype == TRANS_LOCK) {
+    hname = NULL; rpath = NULL;
+    ttype = trans_type(url, &hname, &rpath);
+    if (ttype < 0) {
+	(ttype == TRANS_UNKNOWN) ?
+	    fprintf(stderr, "Unknown transfer method: %s\n", url)
+	    : fprintf(stderr, "No transfer method is specified");
+	exit(-1);
     }
     notifyfd = inotify_init();
     if (notifyfd < 0) {
@@ -120,22 +125,7 @@ main(int argc, char **argv)
 	VMODE {
 	    fprintf(stderr, "sending %s to %s\n", avpath, url);
 	}
-	switch (ttype) {
-	case TRANS_HTTP:
-	    sec = http_put(url, avpath);
-	    break;
-	case TRANS_SCP:
-	    sec = scp_put(url, avpath);
-	    break;
-	case TRANS_SFTP:
-	    sec = sftp_put(url, avpath);
-	    break;
-	case TRANS_LOCK:
-	    sec = locked_move(url, avpath);
-	    break;
-	default:
-	    fprintf(stderr, "Unknown transfer protocol\n");
-	}
+	sec = (*ttable[ttype])(hname, rpath, avpath);
 	VMODE {
 	    fprintf(stderr, "%s, %f\n", avpath, sec); fflush(stderr);
 	    fprintf(stderr, "watching %s\n", wapath);
