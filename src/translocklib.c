@@ -99,8 +99,8 @@ jitopen(char *place, char *fname)
 
     locked_lock(place);
     sz = locked_read(fpath, PATH_MAX);
-    if (sz < 0) {
-	fprintf(stderr, "Cannot get a file\n");
+    if (sz <= 0) {
+	fprintf(stderr, "Cannot get a file from %s\n", place);
 	return -1;
     }
     fd = open(fpath, O_RDONLY);

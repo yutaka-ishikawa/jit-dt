@@ -1,9 +1,6 @@
 /*
- *	Just In Time Data Transfer
- *	15/08/2016 Adding locked move function, Yutaka Ishikawa
- *	13/08/2016 Adding sftp protocol
- *			by Yutaka Ishikawa, RIKEN AICS 
- *	15/12/2015 Written by Yutaka Ishikawa, RIKEN AICS
+ *	inotify library separated from jit-transfer
+ *	16/08/2016 Written by Yutaka Ishikawa, RIKEN AICS
  *			yutaka.ishikawa@riken.jp
  */
 #include <limits.h>
@@ -11,38 +8,31 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/inotify.h>
 #include <sys/select.h>
-#include <signal.h>
-#include "translib.h"
+#include "inotifylib.h"
 
-#define DBG	if (dflag)
-#define VMODE	if (vflag)
+#define DBG	if (flag&MYNOTIFY_DEBUG)
+#define VMODE	if (flag&MYNOTIFY_VERBOSE)
 #define MAX_DIRS	(24*60*2+1)
 #define PATH_WATCH	"./"
 #define BUFSIZE		(PATH_MAX + 1 + sizeof(struct inotify_event))
 int	vflag;
 int	dflag;
-int	kflag;
 
 fd_set	readfds;
 int	curdir;
-char	wdirs[MAX_DIRS][PATH_MAX]; /* wdirs[0] is used for stating path */
+char	wdirs[MAX_DIRS][PATH_MAX];
 char	nevtbuf[BUFSIZE];
-char	wapath[PATH_MAX];
 char	avpath[PATH_MAX];
 
-static void
-terminate(int num)
+static inline void
+fformat(char *path)
 {
-    if (kflag) {
-	fprintf(stderr, "sftp_terminate\n");
-	sftp_terminate();
-    }
+    if (path[strlen(path) - 1] != '/') strcat(path, "/");
 }
 
 static int
@@ -56,72 +46,19 @@ add_watch(int fd, const char *path, uint32_t mask)
     return cc;
 }
 
+
 int
-main(int argc, char **argv)
+mynotify(char *topdir, char *startdir,
+	 void (*func)(char*, void**), void **args, int flag)
 {
-    int		opt;
-    char	*url, *hname, *rpath;
-    int		ntfydir, ntfyfile, nfds, curdir, cc;
-    int		ttype;
-    void	*args[2];
-    ssize_t	sz;
-    double	sec;
-    struct stat		 sbuf;
+    int			ntfydir, ntfyfile, nfds, curdir, cc;
+    ssize_t		sz;
+    struct stat		sbuf;
     struct inotify_event *iep = (struct inotify_event *) nevtbuf;
 
-    if (argc < 3 || argc > 8) {
-	fprintf(stderr,
-		"USAGE: %s <url> <watching directory path>"
-		"[-s start directory path] [-k] [-d] [-v]\n",
-		argv[0]);
-	fprintf(stderr, "e.g.:\n");
-	fprintf(stderr, "%s scp:kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
-		"            /home/yisikawa/work/JIT-DT/tmp/\n", argv[0]);
-	fprintf(stderr, "%s scp:kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
-		"            /home/yisikawa/work/JIT-DT/tmp/\\\n"
-		"            -s 00/10/20/\n",
-		argv[0]);
-	return -1;
-    }
-    if (strlen(argv[2]) >= PATH_MAX - 1) {
-	fprintf(stderr, "Too long directory path (%ld)\n", strlen(argv[2]));
-	return -1;
-    }
-    url = argv[1];
-    strcpy(wapath, (argc < 3) ? PATH_WATCH : argv[2]);
-    fformat(wapath);
-    dflag = 0; vflag = 0; wdirs[0][0] = 0;
-    if (argc > 3) {
-	while ((opt = getopt(argc, argv, "kdvs:")) != -1) {
-	    switch (opt) {
-	    case 'd': dflag = TRANS_DEBUG; break;
-	    case 'v': vflag = TRANS_VERBOSE; break;
-	    case 's': 
-		if (strlen(optarg) >= PATH_MAX - 1) {
-		    fprintf(stderr, "Too long start directory path (%ld)\n",
-			    strlen(argv[2]));
-		    return -1;
-		}
-		strcpy(wdirs[0], optarg);
-		break;
-	    case 'k':
-		kflag = 1;
-		break;
-	    }
-	}
-    }
     DBG {
 	fprintf(stderr, "IN_CREATE=0x%x IN_WRITE=0x%x\n",
 		IN_CREATE, IN_CLOSE_WRITE);
-    }
-    trans_setflag(dflag|vflag);
-    hname = NULL; rpath = NULL;
-    ttype = trans_type(url, &hname, &rpath);
-    if (ttype < 0) {
-	(ttype == TRANS_UNKNOWN) ?
-	    fprintf(stderr, "Unknown transfer method: %s\n", url)
-	    : fprintf(stderr, "No transfer method is specified");
-	exit(-1);
     }
     ntfydir = inotify_init();  ntfyfile = inotify_init();
     if (ntfydir < 0 || ntfyfile < 0) {
@@ -130,13 +67,13 @@ main(int argc, char **argv)
     }
     FD_ZERO(&readfds); FD_SET(ntfydir, &readfds); FD_SET(ntfyfile, &readfds);
     nfds = ntfyfile + 1;
-    cc = add_watch(ntfydir, wapath, IN_CREATE);
-    strcpy(wdirs[cc], wapath);
+    cc = add_watch(ntfydir, topdir, IN_CREATE);
+    strcpy(wdirs[cc], topdir);
     curdir = cc;
-    cc = add_watch(ntfyfile, wapath, IN_CLOSE_WRITE);
+    cc = add_watch(ntfyfile, topdir, IN_CLOSE_WRITE);
     /* starting directory */
-    if (wdirs[0][0]) {
-	char	*idx, *sp = wdirs[0];
+    if (startdir) {
+	char	*idx, *sp = startdir;
 	fformat(sp);
 	while ((idx = index(sp, '/'))) {
 	    *idx = 0;
@@ -150,7 +87,6 @@ main(int argc, char **argv)
 	    sp = idx + 1;
 	}
     }
-    signal(SIGINT, terminate);
     VMODE {
 	fprintf(stderr, "now watching directory %s, dirid(%d)\n",
 		wdirs[curdir], curdir);
@@ -205,11 +141,7 @@ main(int argc, char **argv)
 	    if (iep->mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
 	    strcpy(avpath, wdirs[iep->wd]);
 	    strcat(avpath, iep->name);
-	    args[0] = (void*) (long long) kflag; /* keep process */
-	    sec = (*ttable[ttype])(hname, rpath, avpath, args);
-	    VMODE {
-		fprintf(stderr, "%s, %f\n", avpath, sec); fflush(stderr);
-	    }
+	    func(avpath, args);
 	}
     next:
 	FD_ZERO(&readfds);

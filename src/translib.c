@@ -20,15 +20,17 @@
 #include <curl/curl.h>
 #include "translib.h"
 
-double (*ttable[TRANS_TMAX])(char*, char*, char*) =
+#define BSIZE	1024*8
+#define DBG	if (flag & TRANS_DEBUG)
+#define VMODE	if (flag & TRANS_VERBOSE)
+
+double (*ttable[TRANS_TMAX])(char*, char*, char*, void**) =
 { http_put, scp_put, sftp_put, locked_move };
 
-
-#define BSIZE	1024*8
+static int	flag;
 static char	fnbuf[PATH_MAX]; /* temporary use for locked_move */
 static char	combuf[BSIZE]; /* temporary use */
 static int	sftpid = 0;
-static int	sftp_keep_proc;
 
 static
 int setup_childpipe(int *to, int *from)
@@ -50,7 +52,6 @@ put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
 {
     int		cc, sz;
 
-    printf(fmt, a1, a2);
     fprintf(wfp, fmt, a1, a2); fflush(wfp);
     sz = read(rfd, combuf, BSIZE);
     if (sz <= 0) {
@@ -109,6 +110,12 @@ parse_url(char *url, char **host, char **rpath, char *proto)
     return 1;
 }
 
+void
+trans_setflag(int flg)
+{
+    flag = flg;
+}
+
 int
 trans_type(char *url, char **host, char **rpath)
 {
@@ -129,7 +136,7 @@ trans_type(char *url, char **host, char **rpath)
 }
 
 double
-scp_put(char *host, char *rpath, char *fname)
+scp_put(char *host, char *rpath, char *fname, void **opt)
 {
     struct timeval	start, end;
     int			cc;
@@ -164,31 +171,30 @@ sftp_terminate()
     if (sftpid) kill(sftpid, SIGKILL);
 }
 
-void
-sftp_keep_process()
-{
-    sftp_keep_proc = 1;
-}
-
 double
-sftp_put(char *host, char *rpath, char *fname)
+sftp_put(char *host, char *rpath, char *fname, void **opt)
 {
     static int	first = 0;
+    static int	isprocalive = 0;
     static FILE	*wfp = NULL;
     static int	rfd;
-    int		to_sftp[2];
-    int		from_sftp[2];
+    int		keepproc;
+    char	*lntfy, *rntfy;
+    int		to_sftp[2], from_sftp[2];
     int		cc;
     struct timeval	start, end;
     double		sec;
 
     start = getTime();
-    if (first == 0) {
-	first = 1;
-	atexit(sftp_terminate);
+    keepproc = (long long) opt[0];
+    lntfy = (char*) opt[1]; rntfy = (char*) opt[2];
+    DBG {
+	fprintf(stderr, "sftp_put: keepproc = %d\n", keepproc);
     }
-    if (first == 1 || sftp_keep_proc == 0) {
-	first = 2;
+    if (first == 0) {
+	first = 1; atexit(sftp_terminate);
+    }
+    if (isprocalive == 0) {
     	if (pipe(to_sftp) == -1 || pipe(from_sftp) == -1) {
 	    perror("Creating pipe: failed");
 	    exit(-1);
@@ -211,10 +217,15 @@ sftp_put(char *host, char *rpath, char *fname)
 	    perror("Creating pipe: failed");
 	    exit(-1);
 	}
-	printf("sftpid = %d\n", sftpid);
+	DBG {
+	    fprintf(stderr, "sftpid = %d\n", sftpid);
+	}
 	rfd = from_sftp[0]; close(from_sftp[1]);
 	wfp = fdopen(to_sftp[1], "w");	close(to_sftp[0]);
-	fprintf(stderr, "rfd(%d) wfd(%d)\n", from_sftp[0], to_sftp[1]);
+	DBG {
+	    fprintf(stderr, "rfd(%d) wfd(%d)\n", from_sftp[0], to_sftp[1]);
+	}
+	isprocalive = 1;
     }
     if (wfp == NULL) {
 	perror("Something wrong\n");
@@ -234,18 +245,32 @@ sftp_put(char *host, char *rpath, char *fname)
     } else {
 	DBG { fprintf(stderr, "put %s\n", fname); }
 	cc = put_cmd(wfp, rfd, "put %s\n", fname, NULL);
+	strcpy(fnbuf, "~/"); strcat(fnbuf, fname);
     }
     if (cc < 0) {
 	fprintf(stderr, "sftp dies\n");
 	exit(-1);
     }
-    if (sftp_keep_proc) {
+    /* notification */
+    if (lntfy) {
+	sprintf(combuf, "echo %s > %s\n", fnbuf, lntfy);
+	cc = system(combuf);
+	if (cc < 0) {
+	    fprintf(stderr, "Cannot exec: %s\n", combuf);
+	    exit(-1);
+	}
+	DBG { fprintf(stderr, "put the notification file: from %s to %s\n",
+		      lntfy, rntfy); }
+	cc = put_cmd(wfp, rfd, "put %s %s\n", lntfy, rntfy);
+    }
+    if (keepproc) {
 	put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
     } else {
 	int	stat;
 	put_cmd(wfp, rfd, "quit\n", NULL, NULL);
 	close(rfd); fclose(wfp);
 	waitpid(sftpid, &stat, 0);
+	isprocalive = 0;
     }
     end = getTime();
     sec = duration(start, end);
@@ -253,7 +278,7 @@ sftp_put(char *host, char *rpath, char *fname)
 }
 
 double
-locked_move(char *host, char *rpath, char *fname)
+locked_move(char *host, char *rpath, char *fname, void **opt)
 {
     int		rfd, wfd;
     char	*idx, *base;
@@ -306,7 +331,7 @@ replyhandler(void *ptr, size_t size, size_t nmemb, void *fp)
 }
 
 double
-http_put(char *host, char *rpath, char *fname)
+http_put(char *host, char *rpath, char *fname, void **opt)
 {
     char		*url = combuf;
     double		sec;

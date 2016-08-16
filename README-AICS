@@ -1,0 +1,13 @@
+ログインノード固定する場合、以下のIPアドレスを使う。
+    134.160.185.82-89 (klogin2-klogin9)
+
+● 転送元の計算機上での設定
+  1) ~/.ssh/configに以下を登録
+    Host *
+    　　ForwardAgent yes
+　　#
+　2) agentに転送先のprivate keyを登録
+   $ ssh-add ~/.ssh/rsda_k
+  3) 以下を実行
+   $ ./watch_and_transfer sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/\
+      ~/tmp2/ -v -n /tmp/ditready:data-ready -d

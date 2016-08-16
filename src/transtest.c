@@ -14,7 +14,7 @@ main(int argc, char **argv)
     int		fd;
     ssize_t	sz;
 
-    if (argc < 1) {
+    if (argc < 2) {
 	fprintf(stderr, "usage: %s <watching directory>\n", argv[0]);
 	return -1;
     }
