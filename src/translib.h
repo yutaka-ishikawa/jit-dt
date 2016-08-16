@@ -16,7 +16,6 @@
 #define TRANS_TMAX	4
 #define TRANS_UNKNOWN	-1
 #define TRANS_NONE	-2
-#define LCK_FILE	"JITDT-READY"
 
 extern void	trans_setflag(int flag);
 extern int	trans_type(char *url, char **host, char **rpath);
@@ -28,10 +27,13 @@ extern double	locked_move(char *, char *rhpath, char *fname, void **opt);
 extern double	(*ttable[TRANS_TMAX])(char*, char*, char*, void**);
 extern void	sftp_terminate();
 
-extern void	locked_lock(char*);
+#if 0
+#define LCK_FILE	"JITDT-READY"
+extern int	locked_lock(char*, int);
 extern void	locked_unlock();
-extern void	locked_write(char*);
-extern int	locked_read(char*, int);
+extern void	locked_write(int, char*);
+extern int	locked_read(int, char*, int);
+#endif
 
 static inline void
 fformat(char *path)

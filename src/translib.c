@@ -19,6 +19,7 @@
 #include <libgen.h>
 #include <curl/curl.h>
 #include "translib.h"
+#include "translocklib.h"
 
 #define BSIZE	1024*8
 #define DBG	if (flag & TRANS_DEBUG)
@@ -281,12 +282,13 @@ double
 locked_move(char *host, char *rpath, char *fname, void **opt)
 {
     int		rfd, wfd;
+    int		lckfd;
     char	*idx, *base;
     ssize_t	szr, szw = 0;
 
     /* lock */
     printf("host(%s) rpath(%s) fname(%s)\n", host, rpath, fname);
-    locked_lock(rpath);
+    lckfd = locked_lock(rpath);
     if ((rfd = open(fname, O_RDONLY)) < 0) {
 	fprintf(stderr, "Cannot open %s\n", fname);
 	exit(-1);
@@ -315,8 +317,8 @@ locked_move(char *host, char *rpath, char *fname, void **opt)
     /* remove */
     unlink(fname);
     /* write and unlock */
-    locked_write(fnbuf);
-    locked_unlock();
+    locked_write(lckfd, fnbuf);
+    locked_unlock(lckfd);
     return 0;
 }
 

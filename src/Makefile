@@ -8,7 +8,7 @@ LDFLAGS_CLIENT = ../curl-7.46.0/lib/.libs/libcurl.a -lssl -lcrypto -lz -lrt
 .c.o:
 	$(CC) $(CCFLAGS) -c $< -DDEBUG
 
-all: http_daemon http_put watch_and_transfer watch2_and_transfer kwatcher transtest
+all: http_daemon http_put watch_and_transfer watch2_and_transfer kwatcher transtest locktest
 http_daemon: http_daemon.o
 	$(CC) -o http_daemon http_daemon.o $(LDFLAGS_SERVER) 
 http_put: http_put.o
@@ -19,16 +19,19 @@ watch2_and_transfer: watch2_and_transfer.o translib.o translocklib.o
 	$(CC) -o watch2_and_transfer watch2_and_transfer.o translib.o translocklib.o $(LDFLAGS_CLIENT)
 kwatcher: kwatcher.o translib.o translocklib.o inotifylib.o
 	$(CC) -o kwatcher kwatcher.o translib.o translocklib.o inotifylib.o $(LDFLAGS_CLIENT)
-transtest: transtest.o
+transtest: transtest.o translocklib.o
 	$(CC) -o transtest transtest.o translocklib.o
 watch_and_transfer.o : translib.h
 translib.o : translib.h translib.c
 translocklib.o : translib.h translocklib.c
 inotifylib.o : inotifylib.c
+transtest.o : transtest.c
+locktest: locktest.c
+	$(CC) -o locktest locktest.c
 tar:
 	tar czf 123.tar.gz Makefile *.h *.c perf.sh
 clean:
-	rm -f http_daemon watch_and_transfer http_put *.o
+	rm -f http_daemon watch_and_transfer http_put transtest locktest *.o
 ###
 ###
 LDFLAGS_CLIENT2 = ../curl-7.46.0/lib/.libs/libcurl.a clk.o  -lssl -lcrypto -lz -lrt

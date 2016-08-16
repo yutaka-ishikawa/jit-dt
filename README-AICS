@@ -9,5 +9,17 @@
 　2) agentに転送先のprivate keyを登録
    $ ssh-add ~/.ssh/rsda_k
   3) 以下を実行
-   $ ./watch_and_transfer sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/\
-      ~/tmp2/ -v -n /tmp/ditready:data-ready -d
+   $ mkdir /tmp/ishikawa
+   $ ./watch_and_transfer \
+	sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data/  ~/tmp2/ \
+	 -n /tmp/ditready:/tmp/ishikawa/ready -d -v
+
+● Kコンピュータ( $ ssh a03228@134.160.185.83)
+  $ cd /scratch/ra000022/a03228
+  $ mkdir data
+  $ ./kwatcher /tmp/ishikawa /scratch/ra000022/a03228/data/
+
+  /scratch/ra000022/a03228/data/の下にJIT-READYというファイルが出来、ここの
+　ファイルの中にファイル名が格納される。
+　
+  

@@ -41,7 +41,9 @@ add_watch(int fd, const char *path, uint32_t mask)
     int	cc;
     /* inotify_add_watch returns a watch descriptor starts from 1 */
     if ((cc = inotify_add_watch(fd, path, mask)) < 0) {
- 	perror("inotify_add_watch:"); exit(-1);
+ 	perror("inotify_add_watch:");
+	fprintf(stderr, "file = %s\n", path);
+	exit(-1);
     }
     return cc;
 }
