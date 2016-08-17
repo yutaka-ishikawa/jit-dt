@@ -8,7 +8,7 @@ LDFLAGS_CLIENT = ../curl-7.46.0/lib/.libs/libcurl.a -lssl -lcrypto -lz -lrt
 .c.o:
 	$(CC) $(CCFLAGS) -c $< -DDEBUG
 
-all: http_daemon http_put watch_and_transfer watch2_and_transfer kwatcher transtest locktest
+all: http_daemon http_put watch_and_transfer watch2_and_transfer kwatcher transtest transgen locktest
 http_daemon: http_daemon.o
 	$(CC) -o http_daemon http_daemon.o $(LDFLAGS_SERVER) 
 http_put: http_put.o
@@ -26,6 +26,9 @@ translib.o : translib.h translib.c
 translocklib.o : translib.h translocklib.c
 inotifylib.o : inotifylib.c
 transtest.o : transtest.c
+transgen.o : transgen.c
+transgen: transgen.o translocklib.o
+	$(CC) -o transgen transgen.o translocklib.o
 locktest: locktest.c
 	$(CC) -o locktest locktest.c
 tar:

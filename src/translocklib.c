@@ -5,12 +5,14 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/file.h>
+#include <sys/time.h>
+#include <time.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/file.h>
 #include "translib.h"
 #include "translocklib.h"
 
@@ -116,6 +118,11 @@ locked_read(int lckfd, char *buf, int size)
     return cc;
 }
 
+char *
+jitname(int fd)
+{
+    return lckname[lckfds[fd]];
+}
 
 int
 jitopen(char *place, char *fname)
@@ -145,4 +152,39 @@ jitclose(int fd)
     cc = close(fd);
     locked_unlock(lckfds[fd]);
     return cc;
+}
+
+void
+mygettime(struct timeval *sp, struct timezone *tp)
+{
+    if (gettimeofday(sp, tp) < 0) {
+	perror("gettimeofday:"); exit(-1);
+    }
+}
+
+#define IDX_WDAY	0
+#define IDX_MONTH	1
+#define IDX_DATE	2
+#define IDX_TIME	3
+#define IDX_YEAR	4
+
+void
+dateconv(struct timeval	*tsec, char *dbufp, char *fmtbuf)
+{
+    int		i;
+    char	*idx, *nidx;
+    char	*dp[10];
+
+    ctime_r(&tsec->tv_sec, dbufp);
+    for (i = 0, idx = dbufp, nidx = index(dbufp, ' ');
+	 nidx != NULL; idx = nidx + 1, nidx = index(nidx + 1, ' '), i++) {
+	dp[i] = idx;
+	*nidx = 0;
+    }
+    dp[i] = idx; if ((idx = index(idx, '\n'))) *idx = 0;
+
+    sprintf(fmtbuf, "%s:%s:%s:%s:%d",
+	    dp[IDX_YEAR], dp[IDX_MONTH], dp[IDX_DATE], dp[IDX_TIME],
+	    ((int)(long long)tsec->tv_usec)/1000);
+    return;
 }

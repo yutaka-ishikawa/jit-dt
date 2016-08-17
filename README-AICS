@@ -13,6 +13,8 @@
    $ ./watch_and_transfer \
 	sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data/  ~/tmp2/ \
 	 -n /tmp/ditready:/tmp/ishikawa/ready -d -v
+   テスト用データ生成
+   $./transgen 10 -i 5 -c 2 -p ~/tmp2/
 
 ● Kコンピュータ( $ ssh a03228@134.160.185.83)
   $ cd /scratch/ra000022/a03228

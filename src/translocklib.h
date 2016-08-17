@@ -7,6 +7,10 @@
 
 extern int	jitopen(char*, char*);
 extern int	jitclose(int);
+extern char	*jitname(int);
+struct timezone;
+extern void	mygettime(struct timeval*, struct timezone*);
+extern void	dateconv(struct timeval*, char*, char*);
 
 extern char	*locked_name(int);
 extern int	locked_lock(char *path);
