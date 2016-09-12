@@ -1,18 +1,26 @@
 ログインノード固定する場合、以下のIPアドレスを使う。
     134.160.185.82-89 (klogin2-klogin9)
 
-● 転送元の計算機上での設定
+● 自分の端末上での設定
   1) ~/.ssh/configに以下を登録
     Host *
     　　ForwardAgent yes
 　　#
-　2) agentに転送先のprivate keyを登録
-   $ ssh-add ~/.ssh/rsda_k
-  3) 以下を実行
+　2) agentに転送先(Kコンピュータ)用private keyを登録
+   $ ssh-add ~/.ssh/id_rsaxxx
+  3) 転送元にログイン
+   $ ssh xxxxx
+● 転送元での設定
+  1) ssh agentが働いていてKコンピュータにパスワードなしでログイン出来るか確認
+   $ ssh a03228@k.aics.riken.jp
+   これかならずやって、known_hostsに転送元のIPアドレスが登録されておくこと。
+　 そうでないと、watch_and_transferが動作時にsshdがインタラクティブにknown_hosts
+   に登録するかどうか効いてくるが、watch_and_transferは応えないために止まる。
+  2) 以下を実行
    $ mkdir /tmp/ishikawa
    $ ./watch_and_transfer \
 	sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data/  ~/tmp2/ \
-	 -n /tmp/ditready:/tmp/ishikawa/ready -d -v
+	 -n /tmp/ditready:/tmp/ishikawa/ -d -v
    テスト用データ生成
    $./transgen 10 -i 5 -c 2 -p ~/tmp2/
 

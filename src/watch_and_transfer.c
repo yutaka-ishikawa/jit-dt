@@ -27,7 +27,7 @@ static int	keep_proc;
 static char	topdir[PATH_MAX];
 static char	startdir[PATH_MAX];
 static char	lntfyfile[PATH_MAX];
-static char	rntfyfile[PATH_MAX];
+static char	rntfydir[PATH_MAX];
 static char	combuf[PATH_MAX + 128];
 
 static void
@@ -37,7 +37,7 @@ usage(char **argv)
 	    "USAGE: %s <url>\n"
 	    "       <watching directory path>"
 	    "[-s <start directory path>] [-k]\n"
-	    "       [-n <local file>:<remote notification file>] [-d] [-v]\n",
+	    "       [-n <local file>:<remote notification directory>] [-d] [-v]\n",
 	    argv[0]);
     fprintf(stderr, "e.g.:\n");
     fprintf(stderr, "       %s scp:kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
@@ -63,15 +63,16 @@ transfer(char *fname, void **args)
 {
     double	(*transfunc)(char*, char*, char*, void**);
     char	*host_name, *remote_path;
-    void	*opt[3];
+    void	*opt[4];
     double	sec;
 
     transfunc = (double (*)(char*, char*, char*, void**)) args[0];
     host_name = (char*) args[1];
     remote_path = (char*) args[2];
     opt[0] = args[3]; /* keep process */
-    opt[1] =  args[4]; /* local notify file */
-    opt[2] =  args[5]; /* remote notify file */
+    opt[1] = args[4]; /* local notify file */
+    opt[2] = args[5]; /* remote notify dir */
+    opt[3] = args[6]; /* working area */
     printf("keep(%d) remote_path(%s) local ntfy(%s) remote ntfy(%s)\n",
 	   (int) (long long) opt[0], remote_path, (char*) opt[1], (char*) opt[2]);
     sec = transfunc(host_name, remote_path, fname, opt);
@@ -82,7 +83,7 @@ transfer(char *fname, void **args)
 
 void
 showoptions(char *top, char *start, char *host, char *remote,
-	    char *lntf, char *rntf)
+	    char *lntf, char *rntd)
 {
     VMODE {
 	fprintf(stderr, "*************************** Conditions ***************************\n");
@@ -96,7 +97,7 @@ showoptions(char *top, char *start, char *host, char *remote,
 	}
 	fprintf(stderr, "  Remote file path            : %s\n", remote);
 	fprintf(stderr, "  Local file for notifiaction : %s\n", lntf);
-	fprintf(stderr, "  Remote file for notifiaction: %s\n", rntf);
+	fprintf(stderr, "  Remote file for notifiaction: %s\n", rntd);
 	fprintf(stderr, "******************************************************************\n");
     }
 }
@@ -108,7 +109,7 @@ main(int argc, char **argv)
     char	*url;
     int		ttype;
     char	*host_name, *remote_path;
-    void	*args[6];
+    void	*args[10];
 
     if (argc < 3 || argc > 8) {
 	usage(argv);
@@ -149,8 +150,9 @@ main(int argc, char **argv)
 			usage(argv);
 			return -1;
 		    }
-		    *idx = 0; /* terminate for local file name */
-		    strcpy(rntfyfile, idx + 1); /* remote file name */
+		    *idx = 0; /* terminate for local directory name */
+		    strcpy(rntfydir, idx + 1); /* remote directory name */
+		    fformat(rntfydir);
 		    sprintf(combuf, "echo %d > %s\n", getpid(), lntfyfile);
 		    cc = system(combuf);
 		    VMODE {
@@ -173,13 +175,17 @@ main(int argc, char **argv)
 	    : fprintf(stderr, "No transfer method is specified");
 	exit(-1);
     }
-    showoptions(topdir, startdir, host_name, remote_path, lntfyfile, rntfyfile);
+    showoptions(topdir, startdir, host_name, remote_path, lntfyfile, rntfydir);
     trans_setflag(tflag);
     signal(SIGINT, terminate);
     args[0] = ttable[ttype]; args[1] = host_name; args[2] = remote_path;
     args[3] = (void*) (long long) keep_proc;
     args[4] = (void*) lntfyfile;
-    args[5] = (void*) rntfyfile;
+    args[5] = (void*) rntfydir;
+    if ((args[6] = (void*) malloc(sizeof(int)*4)) == 0) {
+	fprintf(stderr, "cannot allocate memory\n"); exit(-1);
+    }
+    memset(args[6], 0, sizeof(int)*4);
     mynotify(topdir, startdir, transfer, args, nflag);
     terminate(0);
     return 0;

@@ -21,6 +21,8 @@
 #include "translib.h"
 #include "translocklib.h"
 
+#define F_VERSION_M	10
+
 #define BSIZE	1024*8
 #define DBG	if (flag & TRANS_DEBUG)
 #define VMODE	if (flag & TRANS_VERBOSE)
@@ -29,7 +31,7 @@ double (*ttable[TRANS_TMAX])(char*, char*, char*, void**) =
 { http_put, scp_put, sftp_put, locked_move };
 
 static int	flag;
-static char	fnbuf[PATH_MAX]; /* temporary use for locked_move */
+static char	fnbuf[PATH_MAX]; /* temporary use  */
 static char	combuf[BSIZE]; /* temporary use */
 static int	sftpid = 0;
 
@@ -180,6 +182,7 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     static FILE	*wfp = NULL;
     static int	rfd;
     int		keepproc;
+    int		*vrsnp;
     char	*lntfy, *rntfy;
     int		to_sftp[2], from_sftp[2];
     int		cc;
@@ -188,7 +191,7 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 
     start = getTime();
     keepproc = (long long) opt[0];
-    lntfy = (char*) opt[1]; rntfy = (char*) opt[2];
+    lntfy = (char*) opt[1]; rntfy = (char*) opt[2]; vrsnp = (int*) opt[3];
     DBG {
 	fprintf(stderr, "sftp_put: keepproc = %d\n", keepproc);
     }
@@ -254,15 +257,17 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     }
     /* notification */
     if (lntfy) {
-	sprintf(combuf, "echo %s > %s\n", fnbuf, lntfy);
+	sprintf(combuf, "echo -n %s > %s\n", fnbuf, lntfy);
 	cc = system(combuf);
 	if (cc < 0) {
 	    fprintf(stderr, "Cannot exec: %s\n", combuf);
 	    exit(-1);
 	}
+	sprintf(combuf, "%s%d", rntfy, *vrsnp);
 	DBG { fprintf(stderr, "put the notification file: from %s to %s\n",
-		      lntfy, rntfy); }
-	cc = put_cmd(wfp, rfd, "put %s %s\n", lntfy, rntfy);
+		      lntfy, combuf); }
+	cc = put_cmd(wfp, rfd, "put %s %s\n", lntfy, combuf);
+	*vrsnp = (*vrsnp + 1)%F_VERSION_M;
     }
     if (keepproc) {
 	put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
