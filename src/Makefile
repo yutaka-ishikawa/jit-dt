@@ -8,7 +8,7 @@ OBJS =	translib.o translocklib.o inotifylib.o watch_and_transfer.o \
 CCFLAGS = -O3 -Wall -g -c \
 	-I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0/include/
 LDFLAGS_SERVER = ../libmicrohttpd-0.9.47/src/microhttpd/.libs/libmicrohttpd.a \
-	-L$(HOME)/local/lib -lgcrypt -lgnutls -lpthread
+	-L$(HOME)/local/lib -lgcrypt -lgnutls -lpthread -lrt
 LDFLAGS_CLIENT = ../curl-7.46.0/lib/.libs/libcurl.a -lssl -lcrypto -lz -lrt
 .c.o:
 	$(CC) $(CCFLAGS) -c $< -DDEBUG
