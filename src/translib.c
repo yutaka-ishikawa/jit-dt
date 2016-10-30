@@ -151,15 +151,15 @@ scp_put(char *host, char *rpath, char *fname, void **opt)
 	sprintf(combuf, "scp %s %s:", fname, host);
     }
     DBG {
-	fprintf(stderr, "cmd=%s\n", combuf);
+	LOG_PRINT("cmd=%s\n", combuf);
     }
     start = getTime();
     cc = system(combuf);
     if (cc != 0) {
 	if (cc == -1) {
-	    fprintf(stderr, "Cannot invoke command: %s\n", combuf);
+	    LOG_PRINT("Cannot invoke command: %s\n", combuf);
 	} else {
-	    fprintf(stderr, "Return code %d of command: %s\n", cc, combuf);
+	    LOG_PRINT("Return code %d of command: %s\n", cc, combuf);
 	}
 	return -1;
     }
@@ -193,7 +193,7 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     keepproc = (long long) opt[0];
     lntfy = (char*) opt[1]; rntfy = (char*) opt[2]; vrsnp = (int*) opt[3];
     DBG {
-	fprintf(stderr, "sftp_put: keepproc = %d\n", keepproc);
+	LOG_PRINT("sftp_put: keepproc = %d\n", keepproc);
     }
     if (first == 0) {
 	first = 1; atexit(sftp_terminate);
@@ -206,7 +206,7 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	if ((sftpid = fork()) == 0) {
 	    /* child */
 	    if (setup_childpipe(to_sftp, from_sftp) < 0) {
-		fprintf(stderr, "Cannot set up file descriptor\n");
+		LOG_PRINT("Cannot set up file descriptor\n");
 		exit(-1);
 	    }
 	    cc = execl("/usr/bin/sftp", "sftp",
@@ -222,12 +222,12 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	    exit(-1);
 	}
 	DBG {
-	    fprintf(stderr, "sftpid = %d\n", sftpid);
+	    LOG_PRINT("sftpid = %d\n", sftpid);
 	}
 	rfd = from_sftp[0]; close(from_sftp[1]);
 	wfp = fdopen(to_sftp[1], "w");	close(to_sftp[0]);
 	DBG {
-	    fprintf(stderr, "rfd(%d) wfd(%d)\n", from_sftp[0], to_sftp[1]);
+	    LOG_PRINT("rfd(%d) wfd(%d)\n", from_sftp[0], to_sftp[1]);
 	}
 	isprocalive = 1;
     }
@@ -244,15 +244,15 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	    /* last '/' means a directory */
 	    strcat(fnbuf, base);
 	} /* including a file name */
-	DBG { fprintf(stderr, "put %s %s\n", fname, fnbuf); }
+	DBG { LOG_PRINT("put %s %s\n", fname, fnbuf); }
 	cc = put_cmd(wfp, rfd, "put %s %s\n", fname, fnbuf);
     } else {
-	DBG { fprintf(stderr, "put %s\n", fname); }
+	DBG { LOG_PRINT("put %s\n", fname); }
 	cc = put_cmd(wfp, rfd, "put %s\n", fname, NULL);
 	strcpy(fnbuf, "~/"); strcat(fnbuf, fname);
     }
     if (cc < 0) {
-	fprintf(stderr, "sftp dies\n");
+	LOG_PRINT("sftp dies\n");
 	exit(-1);
     }
     /* notification */
@@ -260,11 +260,11 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	sprintf(combuf, "echo -n %s > %s\n", fnbuf, lntfy);
 	cc = system(combuf);
 	if (cc < 0) {
-	    fprintf(stderr, "Cannot exec: %s\n", combuf);
+	    LOG_PRINT("Cannot exec: %s\n", combuf);
 	    exit(-1);
 	}
 	sprintf(combuf, "%s%d", rntfy, *vrsnp);
-	DBG { fprintf(stderr, "put the notification file: from %s to %s\n",
+	DBG { LOG_PRINT("put the notification file: from %s to %s\n",
 		      lntfy, combuf); }
 	cc = put_cmd(wfp, rfd, "put %s %s\n", lntfy, combuf);
 	*vrsnp = (*vrsnp + 1)%F_VERSION_M;
@@ -295,7 +295,7 @@ locked_move(char *host, char *rpath, char *fname, void **opt)
     printf("host(%s) rpath(%s) fname(%s)\n", host, rpath, fname);
     lckfd = locked_lock(rpath);
     if ((rfd = open(fname, O_RDONLY)) < 0) {
-	fprintf(stderr, "Cannot open %s\n", fname);
+	LOG_PRINT("Cannot open %s\n", fname);
 	exit(-1);
     }
     strcpy(combuf, fname);
@@ -306,7 +306,7 @@ locked_move(char *host, char *rpath, char *fname, void **opt)
 	strcat(fnbuf, base);
     } /* otherwise file name is specified */
     if ((wfd = open(fnbuf, O_CREAT|O_TRUNC|O_RDWR, 0666)) < 0) {
-	fprintf(stderr, "Cannot create %s\n", fnbuf);
+	LOG_PRINT("Cannot create %s\n", fnbuf);
 	exit(-1);
     }
     /* copy */
@@ -314,7 +314,7 @@ locked_move(char *host, char *rpath, char *fname, void **opt)
 	if ((szw = write(wfd, combuf, szr)) != szr) break;
     }
     if (szr < 0 || (szr != 0 && szw != szr)) {
-	fprintf(stderr, "Error on copying from %s to %s\n", fname, fnbuf);
+	LOG_PRINT("Error on copying from %s to %s\n", fname, fnbuf);
 	(szr < 0) ? perror("read") : perror("write");
 	exit(-1);
     }
@@ -332,7 +332,7 @@ static size_t
 replyhandler(void *ptr, size_t size, size_t nmemb, void *fp)
 {
     DBG {
-	fprintf(stderr, "replyhandler: size = %ld nmemb = %ld\n", size, nmemb);
+	LOG_PRINT("replyhandler: size = %ld nmemb = %ld\n", size, nmemb);
     }
     return size*nmemb;
 }
@@ -383,9 +383,9 @@ http_put(char *host, char *rpath, char *fname, void **opt)
     sec = duration(start, end);
     return sec;
 err1:
-    fprintf(stderr, "Cannot initialize.\n");
+    LOG_PRINT("Cannot initialize.\n");
     return -1;
 err2:
-    fprintf(stderr, "Cannot send http request: %s\n", curl_easy_strerror(res));
+    LOG_PRINT("Cannot send http request: %s\n", curl_easy_strerror(res));
     return -1;
 }

@@ -25,7 +25,6 @@ main(int argc, char **argv)
     char	*place;
     int		i;
     int		fd;
-    int		cc;
     ssize_t	sz, totsz;
     struct timeval	time;
     struct timezone	tzone;
@@ -42,12 +41,7 @@ main(int argc, char **argv)
 	    fprintf(stderr, "Cannot open\n");
 	    return -1;
 	}
-	//printf("fname=%s\n", fname);
-	cc = system(buf);
-	if (cc < 0) {
-	    fprintf(stderr, "The \"system\" system call returns %d\n", cc);
-	    perror("system:");
-	}
+	printf("fname=%s\n", fname);
 	while ((sz = read(fd, buf, BUFSIZE)) > 0) {
 	    totsz += sz;
 	}

@@ -1,0 +1,32 @@
+PKCS11=~/.ssh/id_rsa-1
+DAEMON=watch_and_transfer
+OPTIONS="sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data/  \
+    /mnt/latest-kobe/ \
+    -n /tmp/ditready:/tmp/ishikawa/ -v -D"
+
+#    -s 2016-1024/16/
+
+
+case "$1" in
+  start)
+        echo -n "Starting jit-dt: "
+	SCRIPT=`ssh-agent`
+	eval $SCRIPT
+	ssh-add $PKCS11
+	echo $SCRIPT >$SCRIPT_FILE
+	shift 1
+	$DAEMON $OPTIONS $*
+        echo "done"
+        ;;
+  stop)
+        echo -n "Stopping jit-dt: "
+        echo "done"
+        ;;
+  *)
+        echo "Usage: jit-dt start [<options>]" >&2
+        echo "       jit-dt stop" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

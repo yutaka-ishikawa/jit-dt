@@ -162,6 +162,19 @@ mygettime(struct timeval *sp, struct timezone *tp)
     }
 }
 
+void
+timeconv(struct timeval *tsec, char *fmtbuf)
+{
+    struct tm	tmst;
+
+    localtime_r(&tsec->tv_sec, &tmst);
+    sprintf(fmtbuf, "%4d%02d%02d%02d%02d%02d.%d",
+	    tmst.tm_year + 1900, tmst.tm_mon + 1, tmst.tm_mday,
+	    tmst.tm_hour, tmst.tm_min, tmst.tm_sec,
+	    ((int)(long long)tsec->tv_usec)/1000);
+    return;
+}
+
 #define IDX_WDAY	0
 #define IDX_MONTH	1
 #define IDX_DATE	2

@@ -11,6 +11,7 @@ extern char	*jitname(int);
 struct timezone;
 extern void	mygettime(struct timeval*, struct timezone*);
 extern void	dateconv(struct timeval*, char*, char*);
+extern void	timeconv(struct timeval*, char*);
 
 extern char	*locked_name(int);
 extern int	locked_lock(char *path);

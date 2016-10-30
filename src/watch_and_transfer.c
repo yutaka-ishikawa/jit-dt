@@ -8,6 +8,8 @@
  *			yutaka.ishikawa@riken.jp
  */
 #include <limits.h>
+#include <sys/time.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,10 +17,14 @@
 #include <getopt.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <libgen.h>
 #include "translib.h"
 #include "inotifylib.h"
+#include "translocklib.h"
 
-#define VMODE if (tflag&TRANS_VERBOSE)
+#define LOG_MAXENTRIES	(2*2*60*2)	/* 2 hours */
+#define DBG   if (tflag & TRANS_DEBUG)
+#define VMODE if (tflag & TRANS_VERBOSE)
 
 #define PATH_WATCH	"./"
 static int	nflag, tflag;
@@ -29,6 +35,11 @@ static char	startdir[PATH_MAX];
 static char	lntfyfile[PATH_MAX];
 static char	rntfydir[PATH_MAX];
 static char	combuf[PATH_MAX + 128];
+static char	logname[PATH_MAX];
+static char	lognmbase[PATH_MAX] = "/tmp/JITDTLOG";
+static long	logage;
+static int	logent;
+static FILE	*logfp;
 
 static void
 usage(char **argv)
@@ -37,7 +48,7 @@ usage(char **argv)
 	    "USAGE: %s <url>\n"
 	    "       <watching directory path>"
 	    "[-s <start directory path>] [-k]\n"
-	    "       [-n <local file>:<remote notification directory>] [-d] [-v]\n",
+	    "       [-n <local file>:<remote notification directory>] [-D] [-f log file name] [-d] [-v]\n",
 	    argv[0]);
     fprintf(stderr, "e.g.:\n");
     fprintf(stderr, "       %s scp:kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
@@ -46,6 +57,7 @@ usage(char **argv)
 	    "            /home/yisikawa/work/JIT-DT/tmp/\\\n"
 	    "            -s 00/10/20/\n",
 	    argv[0]);
+    fflush(stderr);
 }
 
 static void
@@ -64,7 +76,6 @@ transfer(char *fname, void **args)
     double	(*transfunc)(char*, char*, char*, void**);
     char	*host_name, *remote_path;
     void	*opt[4];
-    double	sec;
 
     transfunc = (double (*)(char*, char*, char*, void**)) args[0];
     host_name = (char*) args[1];
@@ -73,11 +84,23 @@ transfer(char *fname, void **args)
     opt[1] = args[4]; /* local notify file */
     opt[2] = args[5]; /* remote notify dir */
     opt[3] = args[6]; /* working area */
-    printf("keep(%d) remote_path(%s) local ntfy(%s) remote ntfy(%s)\n",
-	   (int) (long long) opt[0], remote_path, (char*) opt[1], (char*) opt[2]);
-    sec = transfunc(host_name, remote_path, fname, opt);
+    DBG {
+	LOG_PRINT("keep(%d) remote_path(%s) local ntfy(%s) remote ntfy(%s)\n",
+		(int) (long long) opt[0], remote_path,
+		(char*) opt[1], (char*) opt[2]);
+    }
     VMODE {
-	fprintf(stderr, "%s, %f\n", fname, sec); fflush(stderr);
+	double	sec;
+	struct timeval	time;
+	struct timezone	tzone;
+	char	timefmtbuf[128];
+	mygettime(&time, &tzone);
+	sec = transfunc(host_name, remote_path, fname, opt);
+	timeconv(&time, timefmtbuf);
+	fprintf(stderr, "%s, %s, %f\n", timefmtbuf, basename(fname), sec);
+	fflush(stderr);
+    } else {
+	transfunc(host_name, remote_path, fname, opt);
     }
 }
 
@@ -86,32 +109,78 @@ showoptions(char *top, char *start, char *host, char *remote,
 	    char *lntf, char *rntd)
 {
     VMODE {
-	fprintf(stderr, "*************************** Conditions ***************************\n");
-	fprintf(stderr, "  Keeping sftp process        : %s\n",
+	LOG_PRINT("*************************** Conditions ***************************\n");
+	LOG_PRINT("  Keeping sftp process        : %s\n",
 		keep_proc > 0 ? "yes" : "no");
-	fprintf(stderr, "  Top directory               : %s\n", top);
-	fprintf(stderr, "  Starting directory          : %s\n",
+	LOG_PRINT("  Top directory               : %s\n", top);
+	LOG_PRINT("  Starting directory          : %s\n",
 		*start == 0 ? top : start);
 	if (host) {
-	    fprintf(stderr, "  Host name                   : %s\n", host);
+	    LOG_PRINT("  Host name                   : %s\n", host);
 	}
-	fprintf(stderr, "  Remote file path            : %s\n", remote);
-	fprintf(stderr, "  Local file for notifiaction : %s\n", lntf);
-	fprintf(stderr, "  Remote file for notifiaction: %s\n", rntd);
-	fprintf(stderr, "******************************************************************\n");
+	LOG_PRINT("  Remote file path            : %s\n", remote);
+	LOG_PRINT("  Local file for notifiaction : %s\n", lntf);
+	LOG_PRINT("  Remote file for notifiaction: %s\n", rntd);
+	LOG_PRINT("******************************************************************\n");
     }
+}
+
+void
+logfupdate()
+{
+    logent++;
+    if (logent > LOG_MAXENTRIES) {
+	fclose(logfp);
+	logent = 0;
+	logage++;
+	sprintf(logname, "%s.%ld", lognmbase, logage);
+	logfp = fopen(logname, "w");
+	if (logfp == NULL) {
+	    /* How we report this error ? */
+	    exit(-1);
+	}
+    }
+}
+
+void
+daemonize()
+{
+    int		pid;
+
+    if((pid = fork()) < 0) {
+	perror("Cannot fork");
+	exit(-1);
+    } else if(pid != 0) {
+	/* the parent process is terminated */
+        _exit(0);
+    }
+    /* new session is created */
+    setsid();
+    signal(SIGHUP, SIG_IGN); /* really needed ? */
+    /* setup stdout, stderr */
+    logage = 1;
+    sprintf(logname, "%s.%ld", lognmbase, logage);
+    if ((logfp = fopen(logname, "w")) == NULL) {
+	/* where we have to print ? /dev/console ? */
+	fprintf(stderr, "Cannot create the logfile: %s\n", logname);
+	exit(-1);
+    }
+    close(0); close(1); close(2);
+    fclose(stdin); fclose(stdout); fclose(stderr);
+    stdout = logfp; stderr = logfp;
 }
 
 int
 main(int argc, char **argv)
 {
     int		opt;
+    int		dmflag = 0;
     char	*url;
     int		ttype;
     char	*host_name, *remote_path;
     void	*args[10];
 
-    if (argc < 3 || argc > 8) {
+    if (argc < 3 || argc > 10) {
 	usage(argv);
 	return -1;
     }
@@ -123,8 +192,14 @@ main(int argc, char **argv)
     strcpy(topdir, (argc < 3) ? PATH_WATCH : argv[2]);
     fformat(topdir);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "dkvs:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "Ddkvs:n:")) != -1) {
 	    switch (opt) {
+	    case 'D': /* daemonize */
+		dmflag = 1;
+		break;
+	    case 'f':
+		strcpy(lognmbase, optarg);
+		break;
 	    case 'd': /* debug mode */
 		nflag |= MYNOTIFY_DEBUG; tflag |= TRANS_DEBUG;
 		break;
@@ -156,7 +231,7 @@ main(int argc, char **argv)
 		    sprintf(combuf, "echo %d > %s\n", getpid(), lntfyfile);
 		    cc = system(combuf);
 		    VMODE {
-			fprintf(stderr, "creating local notify file %s: cc=%d\n",
+			LOG_PRINT("creating local notify file %s: cc=%d\n",
 				lntfyfile, cc);
 		    }
 		    break;
@@ -167,12 +242,17 @@ main(int argc, char **argv)
 	    }
 	}
     }
+    if (dmflag == 1) {
+	daemonize();
+    }
     host_name = NULL; remote_path = NULL;
     ttype = trans_type(url, &host_name, &remote_path);
     if (ttype < 0) {
-	(ttype == TRANS_UNKNOWN) ?
-	    fprintf(stderr, "Unknown transfer method: %s\n", url)
-	    : fprintf(stderr, "No transfer method is specified");
+	if (ttype == TRANS_UNKNOWN) {
+	    LOG_PRINT("Unknown transfer method: %s\n", url);
+	} else {
+	    LOG_PRINT("No transfer method is specified");
+	}
 	exit(-1);
     }
     showoptions(topdir, startdir, host_name, remote_path, lntfyfile, rntfydir);
@@ -183,7 +263,7 @@ main(int argc, char **argv)
     args[4] = (void*) lntfyfile;
     args[5] = (void*) rntfydir;
     if ((args[6] = (void*) malloc(sizeof(int)*4)) == 0) {
-	fprintf(stderr, "cannot allocate memory\n"); exit(-1);
+	LOG_PRINT("cannot allocate memory\n"); exit(-1);
     }
     memset(args[6], 0, sizeof(int)*4);
     mynotify(topdir, startdir, transfer, args, nflag);
