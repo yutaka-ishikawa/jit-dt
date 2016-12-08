@@ -1,4 +1,6 @@
 PKCS11=~/.ssh/id_rsa-1
+SCRIPT_FILE=~/SSH_AGENT_SCRIPT
+PID_FILE=~/JITDT_PID
 DAEMON=watch_and_transfer
 OPTIONS="sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data/  \
     /mnt/latest-kobe/ \
@@ -15,16 +17,18 @@ case "$1" in
 	ssh-add $PKCS11
 	echo $SCRIPT >$SCRIPT_FILE
 	shift 1
-	$DAEMON $OPTIONS $*
+	$DAEMON $OPTIONS $* >$PID_FILE
         echo "done"
         ;;
   stop)
         echo -n "Stopping jit-dt: "
+	kill -KILL `cat $PID_FILE`
         echo "done"
         ;;
   *)
         echo "Usage: jit-dt start [<options>]" >&2
         echo "       jit-dt stop" >&2
+        echo "  Ex.  jit-dt start 2016-1207/10/" >&2
         exit 1
         ;;
 esac
