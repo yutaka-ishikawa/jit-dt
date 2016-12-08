@@ -11,15 +11,24 @@
 #include "translocklib.h"
 #include "inotifylib.h"
 
-#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
+//#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
+#define MAX_HISTORY	(2*10)
 
 #define DBG if (nflag&MYNOTIFY_DEBUG)
 
+static char	indir[PATH_MAX], outdir[PATH_MAX];
 static char	combuf[PATH_MAX];
 static int	nflag = 0;
 static char	*history[MAX_HISTORY];
 static int	nhist;
 static int	curhistp;
+
+static void
+dirnmcpy(char *dst, char *src)
+{
+    strcpy(dst, src);
+    if (dst[strlen(dst) - 1] != '/') strcat(dst, "/");
+}
 
 char *
 mkhist(char *path)
@@ -66,6 +75,9 @@ transfer(char *fname, void **args)
 
     /* adding history */
     if ((old = mkhist(combuf)) != NULL) {
+	DBG {
+	    fprintf(stderr, "kwatcher: removing %s\n", old);
+	}
 	unlink(old);
 	free(old);
     }
@@ -81,7 +93,6 @@ int
 main(int argc, char **argv)
 {
     int		opt;
-    char	*indir, *outdir;
     int		lckfd;
     void	*args[3];
 
@@ -90,7 +101,6 @@ main(int argc, char **argv)
 		"[-h history count] [-d] [-v]\n", argv[0]);
 	return -1;
     }
-    indir = argv[1]; outdir = argv[2];
     curhistp = 0; nhist = MAX_HISTORY;
     if (argc > 3) {
 	while ((opt = getopt(argc, argv, "dvh:")) != -1) {
@@ -103,6 +113,8 @@ main(int argc, char **argv)
 	    }
 	}
     }
+    dirnmcpy(indir, argv[optind]);
+    dirnmcpy(outdir, argv[optind+1]);
     args[0] = outdir;
     lckfd = locked_lock(outdir);
     args[1] = (void*) (long long) lckfd;

@@ -1,5 +1,6 @@
 /*
  *	Just In Time Data Transfer
+ *	07/12/2016 generational log file is turn on
  *	16/08/2016 notification mechanism is genaralized
  *	15/08/2016 Adding locked move function, Yutaka Ishikawa
  *	13/08/2016 Adding sftp protocol
@@ -29,6 +30,7 @@
 #define PATH_WATCH	"./"
 static int	nflag, tflag;
 static int	keep_proc;
+static int	pid;
 
 static char	topdir[PATH_MAX];
 static char	startdir[PATH_MAX];
@@ -70,7 +72,25 @@ terminate(int num)
     if (lntfyfile[0]) unlink(lntfyfile);
 }
 
-void
+
+static void
+logfupdate()
+{
+    logent++;
+    if (logent > LOG_MAXENTRIES) {
+	fclose(logfp);
+	logent = 0;
+	logage++;
+	sprintf(logname, "%s.%ld", lognmbase, logage);
+	logfp = fopen(logname, "w");
+	if (logfp == NULL) {
+	    /* How we report this error ? */
+	    exit(-1);
+	}
+    }
+}
+
+static void
 transfer(char *fname, void **args)
 {
     double	(*transfunc)(char*, char*, char*, void**);
@@ -97,19 +117,20 @@ transfer(char *fname, void **args)
 	mygettime(&time, &tzone);
 	sec = transfunc(host_name, remote_path, fname, opt);
 	timeconv(&time, timefmtbuf);
-	fprintf(stderr, "%s, %s, %f\n", timefmtbuf, basename(fname), sec);
-	fflush(stderr);
+	LOG_PRINT("%s, %s, %f\n", timefmtbuf, basename(fname), sec);
     } else {
 	transfunc(host_name, remote_path, fname, opt);
     }
+    logfupdate();
 }
 
-void
+static void
 showoptions(char *top, char *start, char *host, char *remote,
 	    char *lntf, char *rntd)
 {
     VMODE {
 	LOG_PRINT("*************************** Conditions ***************************\n");
+	LOG_PRINT("  Daemon PID                  : %d\n", pid);
 	LOG_PRINT("  Keeping sftp process        : %s\n",
 		keep_proc > 0 ? "yes" : "no");
 	LOG_PRINT("  Top directory               : %s\n", top);
@@ -125,28 +146,9 @@ showoptions(char *top, char *start, char *host, char *remote,
     }
 }
 
-void
-logfupdate()
-{
-    logent++;
-    if (logent > LOG_MAXENTRIES) {
-	fclose(logfp);
-	logent = 0;
-	logage++;
-	sprintf(logname, "%s.%ld", lognmbase, logage);
-	logfp = fopen(logname, "w");
-	if (logfp == NULL) {
-	    /* How we report this error ? */
-	    exit(-1);
-	}
-    }
-}
-
-void
+static void
 daemonize()
 {
-    int		pid;
-
     if((pid = fork()) < 0) {
 	perror("Cannot fork");
 	exit(-1);
@@ -165,6 +167,9 @@ daemonize()
 	fprintf(stderr, "Cannot create the logfile: %s\n", logname);
 	exit(-1);
     }
+    /* printing daemon pid */
+    pid = getpid();
+    printf("%d\n", pid); fflush(stdout);
     close(0); close(1); close(2);
     fclose(stdin); fclose(stdout); fclose(stderr);
     stdout = logfp; stderr = logfp;

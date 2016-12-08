@@ -9,7 +9,8 @@ SRC="README src/Makefile \
     src/translocklib.h src/translocklib.c \
     src/inotifylib.h src/inotifylib.c \
     src/translocklib.h src/translocklib.c src/kwatcher.c \
-    src/transtest.c src/locktest.c src/transgen.c "
+    src/transtest.c src/locktest.c src/transgen.c \
+    src/calc_delay.pl src/jit-dt src/run-test.sh"
 
 
 tar cf jit-dt-src.tar $SRC

@@ -251,26 +251,22 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	cc = put_cmd(wfp, rfd, "put %s\n", fname, NULL);
 	strcpy(fnbuf, "~/"); strcat(fnbuf, fname);
     }
-    if (cc < 0) {
-	LOG_PRINT("sftp dies\n");
-	exit(-1);
-    }
+    if (cc < 0) goto die_return;
     /* notification */
     if (lntfy) {
 	sprintf(combuf, "echo -n %s > %s\n", fnbuf, lntfy);
 	cc = system(combuf);
-	if (cc < 0) {
-	    LOG_PRINT("Cannot exec: %s\n", combuf);
-	    exit(-1);
-	}
+	if (cc < 0) goto err_return;
 	sprintf(combuf, "%s%d", rntfy, *vrsnp);
 	DBG { LOG_PRINT("put the notification file: from %s to %s\n",
 		      lntfy, combuf); }
 	cc = put_cmd(wfp, rfd, "put %s %s\n", lntfy, combuf);
+	if (cc < 0) goto die_return;
 	*vrsnp = (*vrsnp + 1)%F_VERSION_M;
     }
     if (keepproc) {
-	put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
+	cc= put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
+	if (cc < 0) goto die_return;
     } else {
 	int	stat;
 	put_cmd(wfp, rfd, "quit\n", NULL, NULL);
@@ -281,6 +277,12 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     end = getTime();
     sec = duration(start, end);
     return sec;
+die_return:
+    LOG_PRINT("sftp dies\n");
+    return 0.0;
+err_return:
+    LOG_PRINT("Cannot exec: %s\n", combuf);
+    return 0.0;
 }
 
 double

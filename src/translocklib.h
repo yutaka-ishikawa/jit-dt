@@ -7,6 +7,7 @@
 
 extern int	jitopen(char*, char*);
 extern int	jitclose(int);
+extern int	jitread(int, void*, size_t);
 extern char	*jitname(int);
 struct timezone;
 extern void	mygettime(struct timeval*, struct timezone*);
