@@ -21,27 +21,22 @@
 #include <libgen.h>
 #include "translib.h"
 #include "inotifylib.h"
-#include "translocklib.h"
+#include "misclib.h"
 
-#define LOG_MAXENTRIES	(2*2*60*2)	/* 2 hours */
 #define DBG   if (tflag & TRANS_DEBUG)
 #define VMODE if (tflag & TRANS_VERBOSE)
 
 #define PATH_WATCH	"./"
+static int	pid;
 static int	nflag, tflag;
 static int	keep_proc;
-static int	pid;
 
 static char	topdir[PATH_MAX];
 static char	startdir[PATH_MAX];
 static char	lntfyfile[PATH_MAX];
 static char	rntfydir[PATH_MAX];
 static char	combuf[PATH_MAX + 128];
-static char	logname[PATH_MAX];
 static char	lognmbase[PATH_MAX] = "/tmp/JITDTLOG";
-static long	logage;
-static int	logent;
-static FILE	*logfp;
 
 static void
 usage(char **argv)
@@ -73,29 +68,13 @@ terminate(int num)
 }
 
 
-static void
-logfupdate()
-{
-    logent++;
-    if (logent > LOG_MAXENTRIES) {
-	fclose(logfp);
-	logent = 0;
-	logage++;
-	sprintf(logname, "%s.%ld", lognmbase, logage);
-	logfp = fopen(logname, "w");
-	if (logfp == NULL) {
-	    /* How we report this error ? */
-	    exit(-1);
-	}
-    }
-}
 
 static void
 transfer(char *fname, void **args)
 {
     double	(*transfunc)(char*, char*, char*, void**);
     char	*host_name, *remote_path;
-    void	*opt[4];
+    void	*opt[5];
 
     transfunc = (double (*)(char*, char*, char*, void**)) args[0];
     host_name = (char*) args[1];
@@ -104,6 +83,7 @@ transfer(char *fname, void **args)
     opt[1] = args[4]; /* local notify file */
     opt[2] = args[5]; /* remote notify dir */
     opt[3] = args[6]; /* working area */
+    opt[4] = args[7]; /* port number */
     DBG {
 	LOG_PRINT("keep(%d) remote_path(%s) local ntfy(%s) remote ntfy(%s)\n",
 		(int) (long long) opt[0], remote_path,
@@ -146,34 +126,6 @@ showoptions(char *top, char *start, char *host, char *remote,
     }
 }
 
-static void
-daemonize()
-{
-    if((pid = fork()) < 0) {
-	perror("Cannot fork");
-	exit(-1);
-    } else if(pid != 0) {
-	/* the parent process is terminated */
-        _exit(0);
-    }
-    /* new session is created */
-    setsid();
-    signal(SIGHUP, SIG_IGN); /* really needed ? */
-    /* setup stdout, stderr */
-    logage = 1;
-    sprintf(logname, "%s.%ld", lognmbase, logage);
-    if ((logfp = fopen(logname, "w")) == NULL) {
-	/* where we have to print ? /dev/console ? */
-	fprintf(stderr, "Cannot create the logfile: %s\n", logname);
-	exit(-1);
-    }
-    /* printing daemon pid */
-    pid = getpid();
-    printf("%d\n", pid); fflush(stdout);
-    close(0); close(1); close(2);
-    fclose(stdin); fclose(stdout); fclose(stderr);
-    stdout = logfp; stderr = logfp;
-}
 
 int
 main(int argc, char **argv)
@@ -183,9 +135,10 @@ main(int argc, char **argv)
     char	*url;
     int		ttype;
     char	*host_name, *remote_path;
+    int		portnum = 0;
     void	*args[10];
 
-    if (argc < 3 || argc > 10) {
+    if (argc < 3) {
 	usage(argv);
 	return -1;
     }
@@ -197,7 +150,7 @@ main(int argc, char **argv)
     strcpy(topdir, (argc < 3) ? PATH_WATCH : argv[2]);
     fformat(topdir);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "Ddkvs:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "Ddkp:vs:n:")) != -1) {
 	    switch (opt) {
 	    case 'D': /* daemonize */
 		dmflag = 1;
@@ -207,6 +160,9 @@ main(int argc, char **argv)
 		break;
 	    case 'd': /* debug mode */
 		nflag |= MYNOTIFY_DEBUG; tflag |= TRANS_DEBUG;
+		break;
+	    case 'p': /* port number */
+		portnum = atoi(optarg);
 		break;
 	    case 'v': /* verbose mode */
 		nflag |= MYNOTIFY_VERBOSE; tflag |= TRANS_VERBOSE;
@@ -248,7 +204,7 @@ main(int argc, char **argv)
 	}
     }
     if (dmflag == 1) {
-	daemonize();
+	pid = mydaemonize(lognmbase);
     }
     host_name = NULL; remote_path = NULL;
     ttype = trans_type(url, &host_name, &remote_path);
@@ -271,6 +227,7 @@ main(int argc, char **argv)
 	LOG_PRINT("cannot allocate memory\n"); exit(-1);
     }
     memset(args[6], 0, sizeof(int)*4);
+    args[7] = (void*) (long long) portnum;
     mynotify(topdir, startdir, transfer, args, nflag);
     terminate(0);
     return 0;

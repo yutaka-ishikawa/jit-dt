@@ -23,7 +23,8 @@ sub date2sec()
 
 print("#procs, generated time, sent time, completion time, delay in server, delay in network, size\n");
 open(SERVER, $ARGV[0]) or die("Can't open file: $ARGV[0]");
-open(CLIENT, $ARGV[1]) or die("Can't open file: $ARGV[0]");
+open(CLIENT, $ARGV[1]) or die("Can't open file: $ARGV[1]");
+$nprocs=1;
 while ($cline = <CLIENT>) {
     my ($cfname, $sfaname, $elapsed, $size);
     my ($date1, $date2, $dt1, $dt2, $dt3, $fdelay, $netdelay, $fsec, $netsec);
@@ -48,6 +49,7 @@ while ($cline = <CLIENT>) {
 			     nanosecond => $nano);
 	# $dt1: generated time, $dt2: completion time at client
 	while($sline = <SERVER>) {
+printf("sline=%s", $sline);
 	    if ($sline !~ /kobe_/) { next; }
 	    ($sent, $sfname, $elapsed) = split(',', $sline);
 	    if ($sfname =~ /kobe_(\d+)_A08_pawr_(.+).dat/) {

@@ -18,8 +18,8 @@
 #include <signal.h>
 #include <libgen.h>
 #include <curl/curl.h>
+#include "misclib.h"
 #include "translib.h"
-#include "translocklib.h"
 
 #define F_VERSION_M	10
 
@@ -181,6 +181,8 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     static int	isprocalive = 0;
     static FILE	*wfp = NULL;
     static int	rfd;
+    static char	*argv[20];
+    int		argc, portnum;
     int		keepproc;
     int		*vrsnp;
     char	*lntfy, *rntfy;
@@ -192,6 +194,7 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     start = getTime();
     keepproc = (long long) opt[0];
     lntfy = (char*) opt[1]; rntfy = (char*) opt[2]; vrsnp = (int*) opt[3];
+    portnum = (long long) opt[4];
     DBG {
 	LOG_PRINT("sftp_put: keepproc = %d\n", keepproc);
     }
@@ -209,10 +212,16 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 		LOG_PRINT("Cannot set up file descriptor\n");
 		exit(-1);
 	    }
-	    cc = execl("/usr/bin/sftp", "sftp",
-		       "-b", "-",
-		       "-o", "Compression=yes", 
-		       host, NULL);
+	    argc = 0;
+	    argv[argc++] = "sftp"; argv[argc++] = "-b"; argv[argc++] = "-";
+	    argv[argc++] = "-o"; argv[argc++] = "Compression=yes";
+	    if (portnum > 0) {
+		static char	pstring[128];
+		sprintf(pstring, "Port=%d", portnum);
+		argv[argc++] = "-o"; argv[argc++] = pstring;
+	    }
+	    argv[argc++] = host; argv[argc++] = 0;
+	    cc = execv("/usr/bin/sftp", argv);
 	    if (cc < 0) {
 		perror("Cannot exec sftp");
 		exit(cc);

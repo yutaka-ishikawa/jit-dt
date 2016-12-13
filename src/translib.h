@@ -6,6 +6,10 @@
  *	15/12/2015 Created
  *			by Yutaka Ishikawa, RIKEN AICS,yutaka.ishikawa@riken.jp
  */
+/*
+ * The following constants should be the same value of
+ * MYNOTIFY_DEBUG/MYNOTIFY_VERBOSE
+ */
 #define TRANS_DEBUG	1
 #define TRANS_VERBOSE	2
 
@@ -16,8 +20,6 @@
 #define TRANS_TMAX	4
 #define TRANS_UNKNOWN	-1
 #define TRANS_NONE	-2
-
-#define LOG_PRINT(...) fprintf(stderr, __VA_ARGS__); fflush(stderr);
 
 extern void	trans_setflag(int flag);
 extern int	trans_type(char *url, char **host, char **rpath);

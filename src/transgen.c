@@ -9,7 +9,7 @@
 #include <strings.h>
 #include <string.h>
 #include <unistd.h>
-#include "translocklib.h"
+#include "misclib.h"
 
 #define FBUF_SIZE	(1000*1000)	/* MB */
 #define DBUF_SIZE	128

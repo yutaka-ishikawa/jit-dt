@@ -7,15 +7,17 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdlib.h>
+#include "misclib.h"
 #include "translib.h"
-#include "translocklib.h"
 #include "inotifylib.h"
 
 //#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
 #define MAX_HISTORY	(2*10)
 
 #define DBG if (nflag&MYNOTIFY_DEBUG)
+#define VMODE if (nflag & TRANS_VERBOSE)
 
+static char	lognmbase[PATH_MAX] = "./KWATCHLOG";
 static char	indir[PATH_MAX], outdir[PATH_MAX];
 static char	combuf[PATH_MAX];
 static int	nflag = 0;
@@ -56,8 +58,8 @@ transfer(char *fname, void **args)
     outdir = (char*) args[0];
     lckfd = (int) (long long) args[1];
     DBG {
-	fprintf(stderr, "reading file = %s\n", fname);
-	fprintf(stderr, "lock file = %s\n", locked_name(lckfd));
+	fprintf(stderr, "reading file(%s) lock file(%s)\n",
+		fname, locked_name(lckfd));
     }
     if ((fd = open(fname, O_RDONLY)) < 0) {
 	fprintf(stderr, "Cannot open file %s\n", fname);
@@ -68,7 +70,7 @@ transfer(char *fname, void **args)
 	return;
     }
     DBG {
-	fprintf(stderr, "kwatcher: catching event in %s. file %s is ready in %s\n", outdir, combuf, outdir);
+	fprintf(stderr, "kwatcher:%s is ready in %s\n", combuf, outdir);
     }
     locked_write(lckfd, combuf);
     locked_unlock(lckfd);
@@ -85,13 +87,14 @@ transfer(char *fname, void **args)
     newlckfd = locked_lock(outdir);
     args[1] = (void*) (long long) newlckfd;
     DBG {
-	fprintf(stderr, "new lock file = %s\n", locked_name(newlckfd));
+	fprintf(stderr, "new lock file(%s)\n", locked_name(newlckfd));
     }
 }
 
 int
 main(int argc, char **argv)
 {
+    int		dmflag = 0;
     int		opt;
     int		lckfd;
     void	*args[3];
@@ -103,15 +106,20 @@ main(int argc, char **argv)
     }
     curhistp = 0; nhist = MAX_HISTORY;
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "dvh:")) != -1) {
+	while ((opt = getopt(argc, argv, "dDvh:")) != -1) {
 	    switch (opt) {
 	    case 'd': /* debug mode */   nflag |= MYNOTIFY_DEBUG;   break;
+	    case 'D': /* daemonize */
+		dmflag = 1; break;
 	    case 'v': /* verbose mode */ nflag |= MYNOTIFY_VERBOSE; break;
 	    case 'h':
 		nhist = atoi(optarg);
 		break;
 	    }
 	}
+    }
+    if (dmflag == 1) {
+	mydaemonize(lognmbase);
     }
     dirnmcpy(indir, argv[optind]);
     dirnmcpy(outdir, argv[optind+1]);

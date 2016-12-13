@@ -21,17 +21,24 @@ static int	nprocs, myrank;
 #endif
 
 static char	fname[PATH_MAX+1];
-static char	buf[BUFSIZE];
 static char	timebuf[DBUF_SIZE];
 static char	timefmtbuf[DBUF_SIZE];
 static char	place[PATH_MAX+1];
+
+struct vrze {
+    char	vr[BUFSIZE];
+    char	ze[BUFSIZE];
+} data;
+struct vrze_size {
+    int		vsize;
+    int		zsize;
+} vrze_size[2];
 
 int
 main(int argc, char **argv)
 {
     int		i, iter;
-    int		fd;
-    ssize_t	sz, totsz;
+    ssize_t	totsz;
     struct timeval	time;
     struct timezone	tzone;
 
@@ -54,22 +61,20 @@ main(int argc, char **argv)
 	printf("Tanstest: nprocs(%d)\n", nprocs);
     }
 #endif
+    vrze_size[0].vsize = vrze_size[0].zsize = BUFSIZE;
     for (i = 0; i < iter; i++) {
 	memset(timebuf, 0, DBUF_SIZE);
-	if ((fd = jitopen(place, fname, FTYPE_VR)) < 0) {
-	    printf("Cannot open file:%s\n", fname);
+	if (jitget(place, fname, &data, &vrze_size) < 0) {
+	    printf("Cannot read\n");
 	    continue;
 	}
-	totsz = 0;
-	while ((sz = jitread(fd, buf, BUFSIZE)) > 0) {
-	    totsz += sz;
-	}
-	jitclose(fd);
 	mygettime(&time, &tzone);
 	dateconv(&time, timebuf, timefmtbuf);
 #ifdef MPIENV
 	if (myrank == 0) {
 #endif
+	    printf("vr(%p)=%s\n", data.vr, data.vr);
+	    printf("ze(%p)=%s\n", data.ze, data.ze);
 	    printf("%s,%s,%ld\n", fname, timefmtbuf, totsz);
 	    fflush(stdout);
 #ifdef MPIENV
