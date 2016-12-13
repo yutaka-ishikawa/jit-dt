@@ -1,6 +1,6 @@
 .PHONY: all
 SERVER_CMDS=http_daemon http_put watch_and_transfer
-CLIENT_CMDS=kwatcher lwatcher transtest ptranstest transgen ltranstest ltranstest2
+CLIENT_CMDS=kwatcher lwatcher transtest ptranstest transgen ltranstest ltranstest2 pltranstest
 HOSTNAME=$(shell hostname)
 MPICC = mpicc
 FJCFLAGS =
@@ -60,8 +60,12 @@ transtest: transtest.o misclib.o jitkclient.o
 	$(CC) -o transtest $^
 ltranstest: transtest.o misclib.o jitcclient.o
 	$(CC) -o ltranstest $^
+pltranstest: transtest.o misclib.o pjitcclient.o
+	$(MPICC) -o pltranstest $^
 ltranstest2: transtest2.o misclib.o jitcclient.o
 	$(CC) -o ltranstest2 $^
+pjitcclient.o: jitcclient.c
+	$(MPICC) $(MPICCFLAGS) -o pjitcclient.o -c jitcclient.c
 ptranstest: ptranstest.o misclib.o pjitkclient.o
 	$(MPICC) -o ptranstest $^
 ptranstest.o: transtest.c

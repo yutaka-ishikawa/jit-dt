@@ -1,3 +1,10 @@
+/*
+ *	Just In Time Data Transfer
+ *	12/10/2016 For cluster environment, Yutaka Ishikawa
+ */
+#ifdef MPIENV
+#include <mpi.h>
+#endif /* MPIENV */
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -20,6 +27,15 @@ static char	*strcmd[] = {
     SCMD_NULL,    SCMD_OPEN,    SCMD_CLOSE, SCMD_GET,    SCMD_EXIT,
     SCMD_STATUS,  SCMD_READ,    SCMD_REPLY,   0 };
 
+#ifdef MPIENV
+#define ROOT		0
+static int
+is_myrank() {
+    static int	myrank = -1;
+    if (myrank < 0) MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+    return myrank;
+}
+#endif
 
 int
 setupinet(struct sockaddr_in *saddrp, char *host, int port)
@@ -237,10 +253,10 @@ jitopen(char *place, char *fname, int type)
 #ifdef MPIENV
     int		sz = 0;
     if (is_myrank() == ROOT) {
-	fd = _jitopen(place, fname, type);
+	sock = _jitopen(place, fname, type);
 	if (fname != NULL) sz = strlen(fname);
     }
-    MPI_Bcast(&fd, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+    MPI_Bcast(&sock, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
     MPI_Bcast(&sz, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
     if (sz > 0) {
 	MPI_Bcast(fname, sz, MPI_BYTE, ROOT, MPI_COMM_WORLD);
@@ -337,7 +353,6 @@ _jitget(char *host, char *fname, void *data, void *size)
     if ((cc = netread(sock, (char*) &tcmd, TCMD_SIZE)) <= 0) {
 	return CMD_EXIT;
     }
-    sprintf(fname, "%lld", tcmd.date);
     rsize[0] = tcmd.opt1; rsize[1] = tcmd.opt2;
     for (ptr = 0, i = 0; i < FTYPE_NUM; i++) {
 	netread(sock, ((char*)data) + ptr, rsize[i]);
@@ -352,10 +367,23 @@ jitget(char *place, char *fname, void *data, void *size)
 {
     int		cc;
 #ifdef MPIENV
+    int		i, *bsize, *rsize, ptr;
+    obs_size	*szp = (obs_size*) size;
+
     if (is_myrank() == ROOT) {
 	cc = _jitget(place, fname, data, size);
     }
     MPI_Bcast(&cc, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+    bsize = szp->elem; rsize = (szp + 1)->elem;
+    MPI_Bcast(rsize, sizeof(obs_size), MPI_BYTE, ROOT, MPI_COMM_WORLD);
+    ptr = 0;
+    for (i = 0; i < FTYPE_NUM; i++) {
+	if (rsize[i] > 0) {
+	    MPI_Bcast(((char*)data) + ptr, rsize[i], MPI_BYTE,
+		      ROOT, MPI_COMM_WORLD);
+	    ptr += bsize[i];
+	} 
+    }
 //    if (cc > 0) {
 //	MPI_Bcast(buf, sz, MPI_BYTE, ROOT, MPI_COMM_WORLD);
 //    }
