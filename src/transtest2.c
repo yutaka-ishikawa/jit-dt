@@ -65,7 +65,7 @@ main(int argc, char **argv)
     for (i = 0; i < iter; i++) {
 	memset(timebuf, 0, DBUF_SIZE);
 	if (jitget(place, fname, &data, &vrze_size) < 0) {
-	    printf("Cannot read\n");
+	    printf("Cannot get a file\n");
 	    continue;
 	}
 	mygettime(&time, &tzone);

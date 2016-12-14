@@ -17,9 +17,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "translib.h"
+#include "jitclient.h"
 #include "misclib.h"
 
-#define USE_LOCKF	1
 #define ROOT		0
 #define FD_MAX	1024
 static int	lckfds[FD_MAX];
@@ -42,10 +42,11 @@ jitname(int fd)
 }
 
 int
-_jitopen(char *place, char *fname)
+_jitopen(char *place, char *fname, int type)
 {
     int		lckfd, fd;
     int		sz;
+    char	*files[FTYPE_NUM+1];
 
     lckfd = locked_lock(place);
     sz = locked_read(lckfd, fpath, PATH_MAX);
@@ -54,36 +55,20 @@ _jitopen(char *place, char *fname)
 	close(lckfd);
 	return -1;
     }
+    if (fpath[0] == 0) { /* kwacther daemon might die */
+	close(lckfd);
+	return -1;
+    }
     fpath[sz] = 0;
-    fd = open(fpath, O_RDONLY);
+    septype(fpath, files);
+    fprintf(stderr, "_jitopen: open %s\n", files[type]);
+    fd = open(files[type], O_RDONLY);
     if (fd > 0) {
-	if (fname != NULL) strcpy(fname, fpath);
+	if (fname != NULL) strcpy(fname, files[type]);
 	lckfds[fd] = lckfd;
     } else {
 	if (fname != NULL) fname[0] = 0;
     }
-    return fd;
-}
-
-int
-jitopen(char *place, char *fname)
-{
-    int		fd;
-#ifdef MPIENV
-    int		sz = 0;
-    if (is_myrank() == ROOT) {
-	fd = _jitopen(place, fname);
-	if (fname != NULL) sz = strlen(fname);
-    }
-    MPI_Bcast(&fd, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    MPI_Bcast(&sz, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    if (sz > 0) {
-	MPI_Bcast(fname, sz, MPI_BYTE, ROOT, MPI_COMM_WORLD);
-	fname[sz] = 0;
-    }
-#else
-    fd = _jitopen(place, fname);
-#endif
     return fd;
 }
 
@@ -93,39 +78,48 @@ _jitclose(int fd)
     int		cc;
 
     cc = close(fd);
-    locked_unlock(lckfds[fd]);
+    /* the content of the locked file become 4 byte zero data */
+    locked_unlock_nullify(lckfds[fd]);
     return cc;
 }
 
 int
-jitclose(int fd)
-{
-    int		cc;
-#ifdef MPIENV
-    if (is_myrank() == ROOT) {
-	cc = _jitclose(fd);
-    }
-    MPI_Bcast(&cc, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-#else
-    cc = _jitclose(fd);
-#endif
-    return cc;
-}
-
-int
-jitread(int fd, void *buf, size_t size)
+_jitread(int fd, void *buf, size_t size)
 {
     int		sz;
-#ifdef MPIENV
-    if (is_myrank() == ROOT) {
-	sz = read(fd, buf, size);
-    }
-    MPI_Bcast(&sz, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    if (sz > 0) {
-	MPI_Bcast(buf, sz, MPI_BYTE, ROOT, MPI_COMM_WORLD);
-    }
-#else
     sz = read(fd, buf, size);
-#endif
     return sz;
+}
+
+int
+_jitget(char *place, char *fname, void *data, void *size)
+{
+    int		lckfd, fd;
+    int		i, sz, ptr;
+    char	*files[FTYPE_NUM+1];
+    obs_size	*szp = (obs_size*) size;
+    int		*bsize, *rsize;
+
+    lckfd = locked_lock(place);
+    sz = locked_read(lckfd, fpath, PATH_MAX);
+    if (fpath[0] == 0) { /* kwacther daemon might die */
+	close(lckfd);
+	return -1;
+    }
+    fpath[sz] = 0;
+    septype(fpath, files);
+    bsize = szp->elem; rsize = (szp + 1)->elem;
+    for (ptr = 0, i = 0; i < FTYPE_NUM; i++) {
+	if ((fd = open(files[i], O_RDONLY)) < 0) {
+	    fprintf(stderr, "jitget: cannot open file %s\n", files[i]);
+	    sz = 0;
+	} else {
+	    sz = read(fd, ((char*)data) + ptr, bsize[i]);
+	    close(fd);
+	}
+	rsize[i] = sz;
+	ptr += bsize[i];
+    }
+    locked_unlock_nullify(lckfd);
+    return 0;
 }

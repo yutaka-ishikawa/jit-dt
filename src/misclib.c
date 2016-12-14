@@ -10,7 +10,10 @@
 #include <time.h>
 #include <signal.h>
 #include <string.h>
+#include <regex.h>
 #include "misclib.h"
+
+#define USE_LOCKF	1
 
 static int	pid;
 static long	logage;
@@ -349,6 +352,26 @@ locked_unlock(int lckfd)
 }
 
 void
+locked_unlock_nullify(int lckfd)
+{
+    int		dat;
+    /* NULL */
+    if (lseek(lckfd, 0, SEEK_SET) != 0) {
+	fprintf(stderr, "Cannot be seek\n");
+	perror("lseek");
+	exit(-1);
+    }
+    dat = 0;
+    if (write(lckfd, &dat, 4) != 4) {
+	fprintf(stderr, "Cannot write\n");
+	perror("write");
+	exit(-1);
+    }
+    locked_unlock(lckfd);
+}
+
+
+void
 locked_write(int lckfd, char *info)
 {
     int	cc;
@@ -371,4 +394,39 @@ locked_read(int lckfd, char *buf, int size)
     }
     if ((idx = index(buf, '\n'))) *idx = 0;
     return cc;
+}
+
+#define NMATCH	4	/* all string, date, type, and terminate */
+static char	*regex = "kobe_\\(.*\\)_A08_pawr_\\(.*\\).dat";
+static regex_t	preg;
+static char	errbuf[1024];
+
+void
+regex_init()
+{
+    int		cc;
+    if ((cc = regcomp(&preg, regex, 0)) < 0) {
+	fprintf(stderr, "regexinit: compile error: %s\n", regex);
+	regerror(cc, &preg, errbuf, 1024);
+	fprintf(stderr, "\t%s\n", errbuf);
+	exit(-1);
+    }
+}
+
+int
+regex_match(char *pattern, char *date, char *type)
+{
+    int		cc;
+    regmatch_t	pmatch[NMATCH];
+
+    if ((cc = regexec(&preg, pattern, NMATCH, pmatch, 0)) < 0) {
+	fprintf(stderr, "regmatch: regexec error: %s\n", regex);
+	regerror(cc, &preg, errbuf, 1024);
+	fprintf(stderr, "\t%s\n", errbuf);
+	return -1;
+    }
+    if (cc == REG_NOMATCH) return -1;
+    strncpy(date, &pattern[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so);
+    strncpy(type, &pattern[pmatch[2].rm_so], pmatch[2].rm_eo - pmatch[2].rm_so);
+    return 1;
 }

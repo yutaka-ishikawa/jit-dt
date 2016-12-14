@@ -27,15 +27,6 @@ static char	*strcmd[] = {
     SCMD_NULL,    SCMD_OPEN,    SCMD_CLOSE, SCMD_GET,    SCMD_EXIT,
     SCMD_STATUS,  SCMD_READ,    SCMD_REPLY,   0 };
 
-#ifdef MPIENV
-#define ROOT		0
-static int
-is_myrank() {
-    static int	myrank = -1;
-    if (myrank < 0) MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-    return myrank;
-}
-#endif
 
 int
 setupinet(struct sockaddr_in *saddrp, char *host, int port)
@@ -246,28 +237,6 @@ _jitopen(char *host, char *fname, int type)
     return sock;
 }
 
-int
-jitopen(char *place, char *fname, int type)
-{
-    int		sock;
-#ifdef MPIENV
-    int		sz = 0;
-    if (is_myrank() == ROOT) {
-	sock = _jitopen(place, fname, type);
-	if (fname != NULL) sz = strlen(fname);
-    }
-    MPI_Bcast(&sock, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    MPI_Bcast(&sz, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    if (sz > 0) {
-	MPI_Bcast(fname, sz, MPI_BYTE, ROOT, MPI_COMM_WORLD);
-	fname[sz] = 0;
-    }
-#else
-    sock = _jitopen(place, fname, type);
-#endif
-    //printf("jitopen: fname=%s\n", fname);
-    return sock;
-}
 
 int
 _jitclose(int sock)
@@ -279,20 +248,6 @@ _jitclose(int sock)
     return cc;
 }
 
-int
-jitclose(int sock)
-{
-    int		cc;
-#ifdef MPIENV
-    if (is_myrank() == ROOT) {
-	cc = _jitclose(sock);
-    }
-    MPI_Bcast(&cc, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-#else
-    cc = _jitclose(sock);
-#endif
-    return cc;
-}
 
 int
 _jitread(int sock, void *buf, size_t size)
@@ -311,28 +266,6 @@ _jitread(int sock, void *buf, size_t size)
     return cc;
 }
 
-int
-jitread(int sock, void *buf, size_t size)
-{
-    int		sz;
-#ifdef MPIENV
-    if (is_myrank() == ROOT) {
-	sz = _jitread(sock, buf, size);
-    }
-    MPI_Bcast(&sz, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    if (sz > 0) {
-	MPI_Bcast(buf, sz, MPI_BYTE, ROOT, MPI_COMM_WORLD);
-    }
-#else
-    sz = _jitread(sock, buf, size);
-#endif
-    //printf("jitread: size(%d)\n", sz);
-    return sz;
-}
-
-typedef struct obs_size {
-    int		elem[2];
-} obs_size;
 
 int
 _jitget(char *host, char *fname, void *data, void *size)
@@ -360,36 +293,4 @@ _jitget(char *host, char *fname, void *data, void *size)
     }
     close(sock);
     return 0;
-}
-
-int
-jitget(char *place, char *fname, void *data, void *size)
-{
-    int		cc;
-#ifdef MPIENV
-    int		i, *bsize, *rsize, ptr;
-    obs_size	*szp = (obs_size*) size;
-
-    if (is_myrank() == ROOT) {
-	cc = _jitget(place, fname, data, size);
-    }
-    MPI_Bcast(&cc, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    bsize = szp->elem; rsize = (szp + 1)->elem;
-    MPI_Bcast(rsize, sizeof(obs_size), MPI_BYTE, ROOT, MPI_COMM_WORLD);
-    ptr = 0;
-    for (i = 0; i < FTYPE_NUM; i++) {
-	if (rsize[i] > 0) {
-	    MPI_Bcast(((char*)data) + ptr, rsize[i], MPI_BYTE,
-		      ROOT, MPI_COMM_WORLD);
-	    ptr += bsize[i];
-	} 
-    }
-//    if (cc > 0) {
-//	MPI_Bcast(buf, sz, MPI_BYTE, ROOT, MPI_COMM_WORLD);
-//    }
-#else
-    cc = _jitget(place, fname, data, size);
-#endif
-    //printf("jitread: size(%d)\n", sz);
-    return cc;
 }

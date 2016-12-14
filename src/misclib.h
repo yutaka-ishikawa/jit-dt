@@ -14,6 +14,7 @@ extern void	dateconv(struct timeval	*tsec, char *dbufp, char *fmtbuf);
 extern char	*locked_name(int);
 extern int	locked_lock(char *path);
 extern void	locked_unlock(int);
+extern void	locked_unlock_nullify(int);
 extern void	locked_write(int, char *info);
 extern int	locked_read(int, char *buf, int size);
 
@@ -29,5 +30,7 @@ extern histdata	*histget();
 extern void	histremove();
 extern void	histwait();
 extern histdata	*histput(char *path, long long date, int type);
+extern void	regex_init();
+extern int	regex_match(char*, char*, char*);
 
 #endif /* JIT_MISCLIB */

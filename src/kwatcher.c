@@ -10,20 +10,35 @@
 #include "misclib.h"
 #include "translib.h"
 #include "inotifylib.h"
+#include "jitclient.h"
 
 //#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
-#define MAX_HISTORY	(2*10)
+//#define MAX_HISTORY	(2*10)
+#define MAX_HISTORY	(5)
 
 #define DBG if (nflag&MYNOTIFY_DEBUG)
 #define VMODE if (nflag & TRANS_VERBOSE)
 
 static char	lognmbase[PATH_MAX] = "./KWATCHLOG";
 static char	indir[PATH_MAX], outdir[PATH_MAX];
-static char	combuf[PATH_MAX];
+static char	namebuf[PATH_MAX], lockedf[PATH_MAX*3+3];
 static int	nflag = 0;
-static char	*history[MAX_HISTORY];
+static char	flags[1024];
+static histdata	history[MAX_HISTORY];
 static int	nhist;
 static int	curhistp;
+static int	pid;
+
+static void
+showsettings()
+{
+    fprintf(stderr, "*********************************************\n");
+    fprintf(stderr, "    Daemon PID          : %d\n", pid);
+    fprintf(stderr, "    Watching  directory : %s\n", indir);
+    fprintf(stderr, "    History size        : %d\n", nhist);
+    fprintf(stderr, "    Flags               : %s (%x)\n", flags, nflag);
+    fprintf(stderr, "*********************************************\n");
+}
 
 static void
 dirnmcpy(char *dst, char *src)
@@ -32,27 +47,61 @@ dirnmcpy(char *dst, char *src)
     if (dst[strlen(dst) - 1] != '/') strcat(dst, "/");
 }
 
-char *
+histdata *
 mkhist(char *path)
 {
+    static char	date[128], type[128];
+    int		i, tp;
+    long long	dt;
     char	*cp;
-    char	*old;
+
+    if (regex_match(path, date, type) < 0) {
+	fprintf(stderr, "Cannot parse the file name. skipping\n");
+	return NULL;
+    }
+    dt = atoll(date);
+    tp = asc2ent(type);
     if ((cp = malloc(strlen(path) + 1)) == NULL) {
 	fprintf(stderr, "mkhist:Cannot reserve memory\n"); exit(-1);
     }
     strcpy(cp, path);
-    old = history[curhistp];
-    history[curhistp] = cp;
-    curhistp = (curhistp + 1) % nhist;
-    return old;
+    if (dt == history[curhistp].date) {
+	history[curhistp].fname[tp] = cp;
+	for (i = 0; i < FTYPE_NUM; i++) {
+	    if (history[curhistp].fname[i] == 0) goto nofilled;
+	}
+	/* all filled */
+	return &history[curhistp];
+    } else { /* new entry */
+	curhistp = (curhistp + 1) % nhist;
+	if (history[curhistp].date > 0) {
+	    /* removing */
+	    VMODE {
+		fprintf(stderr, "kwatcher: removing %lld\n",
+			history[curhistp].date);
+	    }
+	    for (i = 0; i < FTYPE_NUM; i++) {
+		char	*tcp;
+		if ((tcp = history[curhistp].fname[i])) {
+		    unlink(tcp);
+		    free(tcp);
+		    history[curhistp].fname[i] = 0;
+		}
+	    }
+	}
+	history[curhistp].date = dt;
+	history[curhistp].fname[tp] = cp;
+    }
+nofilled:
+    return NULL;
 }
 
 void
 transfer(char *fname, void **args)
 {
     char	*outdir;
-    char	*old;
-    int		fd, lckfd, newlckfd;
+    histdata	*files;
+    int		i, fd, lckfd, newlckfd;
     ssize_t	sz;
 
     outdir = (char*) args[0];
@@ -65,24 +114,25 @@ transfer(char *fname, void **args)
 	fprintf(stderr, "Cannot open file %s\n", fname);
 	return;
     }
-    if ((sz = read(fd, combuf, PATH_MAX)) < 0) {
+    if ((sz = read(fd, namebuf, PATH_MAX)) < 0) {
 	fprintf(stderr, "Cannot read file %s\n", fname);
 	return;
     }
-    DBG {
-	fprintf(stderr, "kwatcher:%s is ready in %s\n", combuf, outdir);
+    /* adding history */
+    VMODE {
+	fprintf(stderr, "kwatcher: adding %s\n", namebuf);
     }
-    locked_write(lckfd, combuf);
+    if ((files = mkhist(namebuf)) == NULL) return;
+    VMODE {
+	fprintf(stderr, "kwatcher: available %lld\n", files->date);
+    }
+    lockedf[0] = 0;
+    for (i = 0; i < FTYPE_NUM; i++) {
+	strcat(lockedf, files->fname[i]); strcat(lockedf, FTSTR_SEPARATOR); 
+    }
+    locked_write(lckfd, lockedf);
     locked_unlock(lckfd);
 
-    /* adding history */
-    if ((old = mkhist(combuf)) != NULL) {
-	DBG {
-	    fprintf(stderr, "kwatcher: removing %s\n", old);
-	}
-	unlink(old);
-	free(old);
-    }
     /* new lock */
     newlckfd = locked_lock(outdir);
     args[1] = (void*) (long long) newlckfd;
@@ -108,10 +158,18 @@ main(int argc, char **argv)
     if (argc > 3) {
 	while ((opt = getopt(argc, argv, "dDvh:")) != -1) {
 	    switch (opt) {
-	    case 'd': /* debug mode */   nflag |= MYNOTIFY_DEBUG;   break;
+	    case 'd': /* debug mode */
+		nflag |= MYNOTIFY_DEBUG;
+		strcat(flags, "-d ");
+		break;
 	    case 'D': /* daemonize */
-		dmflag = 1; break;
-	    case 'v': /* verbose mode */ nflag |= MYNOTIFY_VERBOSE; break;
+		dmflag = 1;
+		strcat(flags, "-D ");
+		break;
+	    case 'v': /* verbose mode */
+		nflag |= MYNOTIFY_VERBOSE;
+		strcat(flags, "-v ");
+		break;
 	    case 'h':
 		nhist = atoi(optarg);
 		break;
@@ -119,10 +177,12 @@ main(int argc, char **argv)
 	}
     }
     if (dmflag == 1) {
-	mydaemonize(lognmbase);
+	pid = mydaemonize(lognmbase);
     }
+    regex_init();
     dirnmcpy(indir, argv[optind]);
     dirnmcpy(outdir, argv[optind+1]);
+    showsettings();
     args[0] = outdir;
     lckfd = locked_lock(outdir);
     args[1] = (void*) (long long) lckfd;

@@ -10,7 +10,6 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdlib.h>
-#include <regex.h>
 #include <pthread.h>
 #include "misclib.h"
 #include "translib.h"
@@ -24,7 +23,6 @@
 #define MAX_HISTORY	(2*10)
 //#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
 #define SSIZE	1024
-#define NMATCH	3
 
 static char	lognmbase[PATH_MAX] = "./LWATCHLOG";
 static char	indir[PATH_MAX];
@@ -79,50 +77,6 @@ init_transfer(char *host, int port, struct sockaddr_in *saddrp)
 	perror("listen"); exit(1);
     }
     return sock;
-}
-
-#define NMACTCH	4	/* all string, date, type, and terminate */
-static char	*regex = "kobe_\\(.*\\)_A08_pawr_\\(.*\\).dat";
-static regex_t	preg;
-static char	errbuf[1024];
-
-static void
-regex_init()
-{
-    int		cc;
-    if ((cc = regcomp(&preg, regex, 0)) < 0) {
-	fprintf(stderr, "regexinit: compile error: %s\n", regex);
-	regerror(cc, &preg, errbuf, 1024);
-	fprintf(stderr, "\t%s\n", errbuf);
-	exit(-1);
-    }
-}
-
-static int
-regex_match(char *pattern, char *date, char *type)
-{
-    int		cc;
-    regmatch_t	pmatch[NMATCH];
-
-    if ((cc = regexec(&preg, pattern, NMATCH, pmatch, 0)) < 0) {
-	fprintf(stderr, "regmatch: regexec error: %s\n", regex);
-	regerror(cc, &preg, errbuf, 1024);
-	fprintf(stderr, "\t%s\n", errbuf);
-	return -1;
-    }
-    if (cc == REG_NOMATCH) return -1;
-    strncpy(date, &pattern[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so);
-    strncpy(type, &pattern[pmatch[2].rm_so], pmatch[2].rm_eo - pmatch[2].rm_so);
-    return 1;
-}
-
-static int
-asc2ent(char *type)
-{
-    if (!strcmp(type, FTSTR_VR)) return FTYPE_VR_ENT;
-    if (!strcmp(type, FTSTR_ZE)) return FTYPE_ZE_ENT;
-//    if (!strcmp(type, FTSTR_FLAG)) return FTYPE_FLAG_ENT;
-    return FTYPE_VR_ENT; /* no match */
 }
 
 void
@@ -186,16 +140,14 @@ transfer(void *param)
 	    switch (cmd) {
 	    case CMD_OPEN: /* opt1:type */
 		hp = histget();
+	    retry_open:
 		fname = hp->fname[opt[0]];
 		if (fname == NULL) { /* Not available */
-		    tfd = -1;
-		    trans_replyopen(sock, fname, -1);
-		    close(sock);
-		    goto next;
-		} else {
-		    tfd = open(fname, O_RDONLY);
-		    trans_replyopen(sock, fname, 0);
+		    histwait();
+		    goto retry_open;
 		}
+		tfd = open(fname, O_RDONLY);
+		trans_replyopen(sock, fname, 0);
 		VMODE {
 		    fprintf(stderr, "open %s\n", fname); fflush(stderr);
 		}
@@ -213,11 +165,11 @@ transfer(void *param)
 	    case CMD_GET:
 		hp = histget();
 		/* checking if all types arrive */
-	    retry:
+	    retry_get:
 		for (i = 0; i < FTYPE_NUM; i++) {
 		    if (hp->fname[i] == NULL) {
 			histwait();
-			goto retry;
+			goto retry_get;
 		    }
 		}
 		VMODE {
@@ -253,12 +205,12 @@ transfer(void *param)
 		free(cp);
 		goto next;
 	    case CMD_CLOSE:
-		histremove();
-		if (tfd >= 0) close(tfd);
-		tfd = -1;
 		VMODE {
 		    fprintf(stderr, "close %s\n", fname); fflush(stderr);
 		}
+		histremove();
+		if (tfd >= 0) close(tfd);
+		tfd = -1;
 		goto next;
 		break;
 	    case CMD_EXIT:

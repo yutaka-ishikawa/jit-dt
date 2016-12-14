@@ -1,3 +1,35 @@
+$ ssh -p 2222 ishikawa@data-assimilation.aics.riken.jp
+$ git clone syssoft@www-local.sys.aics.riken.jp:jit-dt
+--------------------------------------------------------------------------------
+$ ./testgen.pl TESTLOG ~/tmp/tmp/
+$ ./lwatcher ~/tmp/tmp -v 
+1) jitopen/jitread/jitclose test
+  single:
+     $ ltranstest localhost:8080 10
+  MPI:
+     $ pltranstest localhost:8080 10
+2) jitget test
+  single:
+   $ ltranstest2 localhost:8080 10
+  MPI:
+   $ pltranstest2 localhost:8080 10
+--------------------------------------------------------------------------------
+$ ./testkgen.pl TESTLOG ~/tmp/tmp/ ~/tmp/ishikawa/
+$ ./kwatcher ~/tmp/ishikawa/ ~/tmp/tmp/ -d
+1)  jitopen/jitread/jitclose test
+  single:
+     $ transtest ~/tmp/tmp/ 10
+  MPI:
+     $ ptranstest ~/tmp/tmp/ 10
+2) jitget test
+  single:
+   $ transtest2 ~/tmp/tmp/ 10
+  MPI:
+   $ ptranstest2 ~/tmp/tmp/ 10
+
+--------------------------------------------------------------------------------
+
+
 $ ssh a03228@134.160.185.83
 $ mkdir /tmp/ishikawa
 
@@ -17,6 +49,8 @@ watch_and_transfer \
     /mnt/latest-kobe/ \
     -s 2016-1024/16/ \
     -n /tmp/ditready:/tmp/ishikawa/ -v -D
+
+$ kwatcher /tmp/ishikawa /scratch/ra000022/a03228/data/
 
 -------------------------------------------------------------------------------
 For local test
