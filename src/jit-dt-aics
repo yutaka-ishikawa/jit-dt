@@ -28,7 +28,7 @@ case "$1" in
   *)
         echo "Usage: jit-dt start [<options>]" >&2
         echo "       jit-dt stop" >&2
-        echo "  Ex.  jit-dt start 2016-1207/10/" >&2
+        echo "  Ex.  jit-dt start -s 2016-1207/10/" >&2
         exit 1
         ;;
 esac
