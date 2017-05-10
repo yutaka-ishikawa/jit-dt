@@ -1,3 +1,6 @@
+ssh yisikawa@seg-gw.nict.go.jpa
+$ ssh pawr-dp03
+
 ログインノード固定する場合、以下のIPアドレスを使う。
     134.160.185.82-89 (klogin2-klogin9)
 

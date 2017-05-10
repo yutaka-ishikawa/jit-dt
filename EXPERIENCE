@@ -1,5 +1,5 @@
-$ ssh -p 2222 ishikawa@data-assimilation.aics.riken.jp
-$ git clone syssoft@www-local.sys.aics.riken.jp:jit-dt
+$ ssh -p 2222 ishikawa@hibiki.aics.riken.jp
+$ git clone syssoft@www-local.sys.aics.riken.jp:software/jit-dt
 --------------------------------------------------------------------------------
 $ ./testgen.pl TESTLOG ~/tmp/tmp/
 $ ./lwatcher ~/tmp/tmp -v 

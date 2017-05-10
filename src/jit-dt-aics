@@ -2,9 +2,9 @@ PKCS11=~/.ssh/id_rsa-1
 SCRIPT_FILE=~/SSH_AGENT_SCRIPT
 PID_FILE=~/JITDT_PID
 DAEMON=watch_and_transfer
-OPTIONS="sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data/  \
+OPTIONS="sftp:ishikawa@134.160.185.29:/home/ishikawa/data/  \
     /mnt/latest-kobe/ \
-    -n /tmp/ditready:/tmp/ishikawa/ -v -D"
+    -p 2222 -n /tmp/ditready:/tmp/ishikawa/ -v -D"
 
 #    -s 2016-1024/16/
 
@@ -28,7 +28,7 @@ case "$1" in
   *)
         echo "Usage: jit-dt start [<options>]" >&2
         echo "       jit-dt stop" >&2
-        echo "  Ex.  jit-dt start -s 2016-1207/10/" >&2
+        echo "  Ex.  jit-dt start 2016-1207/10/" >&2
         exit 1
         ;;
 esac
