@@ -13,7 +13,7 @@ use Cwd;
 use Time::HiRes qw(setitimer ITIMER_REAL);
 
 if (@ARGV < 3) {
-    die("testgen.pl <log file> <targz file> <out directory> " +
+    die("testgen.pl <log file> <targz file> <out directory> " .
 	            "[inteval] [count] \n");
 }
 open(INPUT, $ARGV[0]) or die("Can't open file: $ARGV[0]");
