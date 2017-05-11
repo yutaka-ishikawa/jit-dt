@@ -40,7 +40,8 @@ install_server: server
 install_client: client
 	$(INSTALL) kwatcher $(INSTDIR) 
 	$(INSTALL) lwatcher $(INSTDIR) 
-	$(INSTALL) transtest ptranstest $(INSTDIR) 
+	$(INSTALL) ltranstest pltranstest $(INSTDIR) 
+	$(INSTALL) ltranstest2 pltranstest2 $(INSTDIR) 
 	$(INSTALL) testgen.pl $(INSTDIR)
 
 .PHONY: depend

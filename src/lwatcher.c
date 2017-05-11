@@ -119,7 +119,7 @@ transfer(void *param)
 	histdata	*hp;
 	char		*fname, *cp;
 	int		sock;
-	int		tfd;
+	int		tfd = -1;
 
 	addrlen = sizeof(*saddrp);
 	DBG {

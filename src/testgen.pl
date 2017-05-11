@@ -13,7 +13,7 @@ use Cwd;
 use Time::HiRes qw(setitimer ITIMER_REAL);
 
 if (@ARGV < 3) {
-    die("testgen.pl <log file> <targz file> <out directory> " .
+    die("testgen.pl <log file> <tar file> <out directory> " .
 	            "[inteval] [count] \n");
 }
 open(INPUT, $ARGV[0]) or die("Can't open file: $ARGV[0]");
@@ -26,7 +26,7 @@ $dir = $ARGV[2];
 if (@ARGV >= 4) {
     $watch_interval = int($ARGV[3]);
 } else {
-    $watch_interval = 5;
+    $watch_interval = 30;
 }
 $first_sleep = 1;
 $count = -1;
@@ -52,7 +52,7 @@ $SIG{ALRM} = sub {
 	$fgzname = $fname . ".gz";
 	$cmd = "cd " . $dir . "; tar --to-stdout -x -f " . $targzfile . $fgzname
 	    . " | gunzip >" . $fname;
-#    $retval = system $cmd;
+	$retval = system $cmd;
 	$time = localtime(time);
 	if ($retval == 0) {
 	    printf("[%s] %s\n", $time, $cmd);

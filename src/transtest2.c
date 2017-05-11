@@ -38,13 +38,13 @@ int
 main(int argc, char **argv)
 {
     int		i, iter;
-    ssize_t	totsz;
     struct timeval	time;
     struct timezone	tzone;
 
 
     if (argc < 2) {
-	fprintf(stderr, "usage: %s <watching directory> [# of iter]\n", argv[0]);
+	fprintf(stderr, "usage: %s [<watching directory>|<host name>] "
+		"[# of iter]\n", argv[0]);
 	return -1;
     }
     if (argc == 3) {
@@ -75,7 +75,7 @@ main(int argc, char **argv)
 #endif
 	    printf("vr(%p)=%s\n", data.vr, data.vr);
 	    printf("ze(%p)=%s\n", data.ze, data.ze);
-	    printf("%s,%s,%ld\n", fname, timefmtbuf, totsz);
+	    printf("%s,%s\n", fname, timefmtbuf);
 	    fflush(stdout);
 #ifdef MPIENV
 	}
