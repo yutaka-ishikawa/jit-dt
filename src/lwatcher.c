@@ -10,6 +10,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdlib.h>
+#include <libgen.h>
 #include <pthread.h>
 #include "misclib.h"
 #include "translib.h"
@@ -117,7 +118,7 @@ transfer(void *param)
 	socklen_t	addrlen;
 	int		cmd, opt[3], retval[3], totsz, sz, i;
 	histdata	*hp;
-	char		*fname, *cp;
+	char		*fname = 0, *cp, *tmp;
 	int		sock;
 	int		tfd = -1;
 
@@ -195,7 +196,8 @@ transfer(void *param)
 			close(tfd);
 		    }
 		}
-		if (trans_replyget(sock, hp->date, cp, totsz, retval) >= 0) {
+		tmp = basename(hp->fname[0]);
+		if (trans_replyget(sock, hp->date, tmp, cp, totsz, retval) >= 0) {
 		    /* successfuly transfered */
 		    histremove();
 		} else { /* client was dead, keeping the entry */

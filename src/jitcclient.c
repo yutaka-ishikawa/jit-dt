@@ -177,7 +177,7 @@ trans_replyread(int sock, char *buf, int size)
 }
 
 int
-trans_replyget(int sock, unsigned long long date, char *buf, int totsz, int *retval)
+trans_replyget(int sock, unsigned long long date, char *fname, char *buf, int totsz, int *retval)
 {
     int			cc;
     struct trans_cmd	tcmd;
@@ -186,6 +186,8 @@ trans_replyget(int sock, unsigned long long date, char *buf, int totsz, int *ret
     tcmd.opt1 = retval[0];  tcmd.opt2 = retval[1]; tcmd.opt3 = retval[2];
     tcmd.date = date;
     tcmd.len = totsz;
+    strncpy(tcmd.str, fname, SCMD_STRSIZ - 1);
+    tcmd.str[SCMD_STRSIZ - 1] = 0;
     cc = netwrite(sock, (char*) &tcmd, sizeof(tcmd));
     if (cc < 0) return cc;
     cc = netwrite(sock, buf, totsz);
@@ -286,6 +288,7 @@ _jitget(char *host, char *fname, void *data, void *size)
     if ((cc = netread(sock, (char*) &tcmd, TCMD_SIZE)) <= 0) {
 	return CMD_EXIT;
     }
+    strncpy(fname, tcmd.str, SCMD_STRSIZ - 1);
     rsize[0] = tcmd.opt1; rsize[1] = tcmd.opt2;
     for (ptr = 0, i = 0; i < FTYPE_NUM; i++) {
 	netread(sock, ((char*)data) + ptr, rsize[i]);

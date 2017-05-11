@@ -21,11 +21,13 @@
 #define SCMD_STATUS	"STAT"
 #define SCMD_READ	"READ"
 #define SCMD_REPLY	"REPL"
+#define SCMD_STRSIZ	128
 
 struct trans_cmd {
     char	cmd[CMD_SIZE+1];
     int		opt1, opt2, opt3, opt4;
     long long	date;
+    char	str[SCMD_STRSIZ];
     int		len;
 };
 #define TCMD_SIZE	(sizeof(struct trans_cmd))
@@ -40,4 +42,4 @@ extern int	trans_getcmd(int sock, int *, int *, int *);
 extern int	trans_replyopen(int sock, char *fpath, int rcc);
 extern int	trans_replyread(int sock, char *buf, int size);
 extern int	trans_replyget(int sock, unsigned long long,
-			       char *buf, int totsz, int *retval);
+			       char *fname, char *buf, int totsz, int *retval);

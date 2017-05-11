@@ -73,8 +73,8 @@ main(int argc, char **argv)
 #ifdef MPIENV
 	if (myrank == 0) {
 #endif
-	    printf("vr(%p)=%s\n", data.vr, data.vr);
-	    printf("ze(%p)=%s\n", data.ze, data.ze);
+	    printf("vr(%p) size(%d)\n", data.vr, vrze_size[0].vsize);
+	    printf("ze(%p) size(%d)\n", data.ze, vrze_size[0].zsize);
 	    printf("%s,%s\n", fname, timefmtbuf);
 	    fflush(stdout);
 #ifdef MPIENV

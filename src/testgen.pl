@@ -19,7 +19,7 @@ if (@ARGV < 3) {
 open(INPUT, $ARGV[0]) or die("Can't open file: $ARGV[0]");
 $cwd = Cwd::getcwd();
 $targzfile = $ARGV[1];
-if ($targzfile !~ "^/") {
+if ($targzfile !~ "^/" && $targzfile !~ "^~") {
     $targzfile = $cwd . "/" . $targzfile;
 }
 $dir = $ARGV[2];
