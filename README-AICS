@@ -1,5 +1,6 @@
 ssh yisikawa@seg-gw.nict.go.jpa
 $ ssh pawr-dp03
+$ jit-dt help
 
 ログインノード固定する場合、以下のIPアドレスを使う。
     134.160.185.82-89 (klogin2-klogin9)
@@ -35,4 +36,7 @@ $ ssh pawr-dp03
   /scratch/ra000022/a03228/data/の下にJIT-READYというファイルが出来、ここの
 　ファイルの中にファイル名が格納される。
 　
-  
+
+● Cluster (hibiki)
+  $ lwatcher -d -v ~/work/
+
