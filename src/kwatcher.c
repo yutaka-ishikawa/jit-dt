@@ -56,7 +56,7 @@ mkhist(char *path)
     char	*cp;
 
     if (regex_match(path, date, type) < 0) {
-	fprintf(stderr, "Cannot parse the file name. skipping\n");
+	fprintf(stderr, "Cannot parse the file name (%s). skipping\n", path);
 	return NULL;
     }
     dt = atoll(date);

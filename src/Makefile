@@ -13,7 +13,9 @@ ifeq (fe01, $(findstring fe01, $(HOSTNAME)))
 endif
 CC = gcc
 INSTALL = install
-INSTDIR = $(HOME)/bin
+#INSTBIN = $(HOME)/bin
+INSTBIN = /opt/nowcast/bin
+INSTINCL = /opt/nowcast/include
 OBJS =	misclib.o translib.o jitclient.o jitkclient.o jitcclient.o \
 	inotifylib.o watch_and_transfer.o http_put.o http_daemon.o \
 	kwatcher.o  lwatcher.o transtest.o transgen.o
@@ -36,13 +38,16 @@ server: $(SERVER_CMDS)
 client: $(CLIENT_CMDS)
 install: install_server install_client
 install_server: server
-	$(INSTALL) watch_and_transfer jit-dt $(INSTDIR) 
+	$(INSTALL) watch_and_transfer jit-dt $(INSTBIN) 
 install_client: client
-	$(INSTALL) kwatcher $(INSTDIR) 
-	$(INSTALL) lwatcher $(INSTDIR) 
-	$(INSTALL) ltranstest pltranstest $(INSTDIR) 
-	$(INSTALL) ltranstest2 pltranstest2 $(INSTDIR) 
-	$(INSTALL) testgen.pl $(INSTDIR)
+	$(INSTALL) kwatcher $(INSTBIN) 
+	$(INSTALL) lwatcher $(INSTBIN) 
+	$(INSTALL) transtest ptranstest $(INSTBIN) 
+	$(INSTALL) transtest2 ptranstest2 $(INSTBIN) 
+	$(INSTALL) ltranstest pltranstest $(INSTBIN) 
+	$(INSTALL) ltranstest2 pltranstest2 $(INSTBIN) 
+	$(INSTALL) ktestgen.pl ltestgen.pl $(INSTBIN)
+	$(INSTALL) jitclient.h $(INSTINCL)
 
 .PHONY: depend
 depend:  $(OBJS:.o=.c)
@@ -68,7 +73,7 @@ ptranstest: ptranstest.o misclib.o pjitclient.o jitkclient.o
 transtest2: transtest2.o misclib.o jitclient.o jitkclient.o
 	$(CC) -o transtest2 $^
 ptranstest2: ptranstest2.o misclib.o jitclient.o jitkclient.o
-	$(MPICC) -o ptranstest $^
+	$(MPICC) -o ptranstest2 $^
 ltranstest: transtest.o misclib.o jitclient.o jitcclient.o
 	$(CC) -o ltranstest $^
 pltranstest: ptranstest.o misclib.o pjitclient.o jitcclient.o
