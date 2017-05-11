@@ -41,6 +41,7 @@ install_client: client
 	$(INSTALL) kwatcher $(INSTDIR) 
 	$(INSTALL) lwatcher $(INSTDIR) 
 	$(INSTALL) transtest ptranstest $(INSTDIR) 
+	$(INSTALL) testgen.pl $(INSTDIR)
 
 .PHONY: depend
 depend:  $(OBJS:.o=.c)
