@@ -1,0 +1,14 @@
+JITDT_INSTALLDIR=/opt/nowcast
+CC = cc
+MPICC =    mpicc
+CFLAGS=    -O3 -Wall -g -c -I$(JITDT_INSTALLDIR)/include
+MPICFLAGS= -DMPIENV $(CFLAGS)
+all: sample psample
+sample:sample.o
+	$(CC) -o $@ $< -L$(JITDT_INSTALLDIR)/lib -ljitdt-k
+psample:psample.o
+	$(MPICC) -o $@ $< -L/opt/nowcast/lib -ljitdt-pk
+sample.o: sample.c
+	$(CC) $(CFLAGS) $< -o $@
+psample.o: sample.c
+	$(MPICC) $(MPICFLAGS) $< -o $@

@@ -1,0 +1,721 @@
+\documentclass[a4j,11pt]{jarticle}
+\oddsidemargin=-0.55cm
+\evensidemargin=-0.55cm
+%\topmargin=-0.5cm
+\textwidth=16.5cm
+%\textheight=23cm
+\date{2017年5月15日}
+\long\def\comment#1{}
+\usepackage[dvipdfmx]{graphicx,color,hyperref}
+\usepackage{listings}
+\usepackage{multicol}
+
+\title{JIT-DT: Just-In-Time Data Transfer}
+\author{理化学研究所計算科学研究機構}
+
+\begin{document}
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{背景}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+フェーズドアレイ気象レーダー（PAWR）、静止気象衛星ひまわり8号・9号といっ
+た次世代型観測データをリアルタイムに気象シミュレーションと同化させて30分後のゲ
+リラ豪雨を予測するシステムの研究開発が進んでいる。
+PAWRは30秒毎に観測データが取得できる。
+アンサンブル気象モデルシミュレーション結果と観測データを同化させながら
+30秒後のアンサンブルシミュレーションを行う。さらに30秒以内に30分後の気
+象シミュレーションを行うことによりリアルタイムで30分後のゲリラ豪雨予測
+が可能となる。
+以降、アンサンブル気象モデルシミュレーション結果と観測データを同化させる
+プログラム群をアプリケーションと呼ぶ。
+
+観測データが生成されるサイトとアプリケーションが実行するサイトはインター
+ネットで接続されている。
+アプリケーション側に十分なシミュレーション及びデータ同化処理時間を提供
+するために、新しい観測データが利用可能になってからデータ同化アプリケー
+ションにデータを渡すまでの時間を限りなく短縮することが求められている。
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{概略}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+JIT-DT (Just-In-Time Data Transfer)は、
+観測施設で生成されたデータを即時にアプリケーションを実行しているサイトに
+データを転送するツールである。
+以降、観測施設をリモートサーバマシン、データを転送する先のマシンをクライアント
+マシン、と呼ぶ。
+
+リモートサーバマシン上で動作しているJIT-DTデーモンは指定されたディレクト
+リ下を監視する。
+新たなファイルが生成されるとそのファイルをクライアントマシンに転送する。
+Linux {\tt inotify}機能を用いることによりデーモンが定期的に新しいファ
+イルが生成されたかをポーリングすることなくファイル生成を即時に知る。
+転送プロトコルには、sftp, scp, httpを提供している。
+
+JIT-DTでは、アプリケーションはクライアントマシンとネットワーク接続され
+ている並列コンピュータ上で実行されていると、想定している。計算ノードと
+クライアントノード間のデータ転送手段には、接続形態に応じて表
+\ref{tab:connectivities}に示すような可能性がある。
+
+\begin{table}
+\caption{計算ノードとクライアントノード間データ転送手段}\label{tab:connectivities}
+\begin{center}
+\begin{tabular}{c|l} \hline
+接続機能 & データ転送方法　\\ \hline\hline
+ファイルシステム & ファイル渡し \\
+IP通信 & 通信 \\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+京コンピュータ環境では、クライアントマシンはログイン
+ノードを使用することになる。京コンピュータの計算ノードとログインノード
+はグローバルファイルシステムFEFSを介してファイルの授受が可能である。計
+算ノード群とログインノードの間でIP通信はできない。
+なお、クラスタ環境によっては計算ノード群とログインノードの間でIP通信が
+可能である。JIT-DTは2つの環境に適応した機構を提供してる。
+以下、2つのデータ転送方法について説明する。
+
+%==============================================================================
+\subsection{ファイルシステム経由の概要}\label{subsec:kwatcher}
+%==============================================================================
+\begin{figure}
+\begin{center}
+\includegraphics[width=12cm]{jitdt-k.png}
+\end{center}
+\caption{ファイルシステム経由}\label{fig:via-file}
+\end{figure}
+
+図\ref{fig:via-file}に「京」コンピュータにおけるファイルシステム経由の
+使用例を示す。
+本図において左側に観測データが蓄積されているサイトが、右側に計算科学研
+究機構に設置されている「京」コンピュータを記載している。
+{\tt watch\_and\_transfer}デーモンはLinuxの{\tt inotify}システムコールを使って新しい
+観測データファイルが生成されるのを待っている。ファイルが生成されると計
+算科学研究機構側のログインノードにデータが転送される。
+転送プロトコルとして、sftp, scp, httpが実装されている。httpを使用する場
+合にはデータ受信側のサーバで本システム向けに開発したhttpデーモンを使用
+する。様々な転送プロトコルを提供することにより様々な計算機環境に対応で
+きるようにしている。
+
+「京」コンピュータでは、sftpプロトコルを使用する。
+ログインノード上では{\tt kwatcher}デーモンを動かす。
+kwatcherデーモンは{\tt watch\_and\_transfer}デーモンからsftpを使って
+ファイルが転送されるのを監視する。
+{\tt watch\_and\_transfer}デーモン同様{\tt inotify}システムコールを使って
+新しいファイルが転送されるのを監視する。
+例えば以下のように{\tt kwatcher}が起動されていたとする。
+\begin{verbatim}
+  ./kwatcher /tmp/bell /scratch/ra000022/a03228/data
+\end{verbatim}
+
+この例では、/tmp/bell/はリモートサーバとの同期用に使われる。\\
+/scratch/ra000022/a03228/data/はリモートサーバからのファイルが格納される
+ディレクトリである。\\
+\noindent
+すなわち、リモートサーバは/scratch/ra000022/a03228/data/
+にファイルを格納すると、同期用のファイルを/tmp/bellに格納する。
+同期用ファイルには到着したファイル名が格納されている。
+{\tt kwatcher}は{\tt inotify}システムコールを使って、/tmp/bell下の同期
+用ファイル生成を監視することによりファイル転送終了を検知する。
+
+{\tt kwatcher}デーモンがファイル転送終了を検知すると、「京」コンピュー
+タの計算ノード上で実行しているアプリケーションに対して通知するためのファ
+イルJIT-READY-1あるいはJIT-READY-2を生成する。これらファイルの中に到着
+したファイル名が格納される。
+このファイルはLinuxのflockシステムコールを使って{\tt kwatcher}デーモンと
+アプリケーションの間で排他的に読み書きされる。
+JIT-READY-1、JIT-READY-2を交互に利用することにより、アプリケーションが
+ファイルを読まなくても{\tt kwatcher}は次のファイルを処理できるようにしている。
+
+京アプリケーションが直接新しいファイルの到着を監視しないのは、
+京コンピュータの計算ノードのLinuxでは{\tt inotify}システムコールが提供される以前の古いLinuxバージョンであり利用できないからである。
+また、例え{\tt inotify}システムコールが実装されていたとしても、リモートサーバ
+からアプリケーションに必要なファイルは複数転送されるため、クライアント
+ノード側で転送されるファイルを管理する必要があり、独立したデーモンでそ
+の処理を行うほうが将来の仕様変更に迅速に変更できると判断した。
+
+%==============================================================================
+\subsection{通信経由の概要}\label{subsec:lwatcher}
+%==============================================================================
+\begin{figure}
+\begin{center}
+\includegraphics[width=12cm]{jitdt-cluster.png}
+\end{center}
+\caption{通信経由}\label{fig:via-comm}
+\end{figure}
+
+ファイルシステム経由のデータ転送では、以下のような遅延がある。
+\begin{enumerate}
+\item {\tt kwatcher}デーモンが、
+クライアントノードに新しい観測データの到着を検知する遅延
+\item {\tt kwatcher}デーモンが、NOTIFY-1/2を生成しfunlockするまでの遅延
+\item アプリケーションがNOTIFY-1/2の内容を読み込みデータをオープンしデータを読み込むまでの遅延
+\end{enumerate}
+
+{\tt kwatcher}デーモンが観測データファイル到着を検知したならば、その
+データを読み込み、アプリケーションとの間の通信によりデータを送信することにより、
+上記(2)と(3)の遅延を削減できる。
+通信経由のデータ転送が本方式である。
+図\ref{fig:via-comm}にその概要を示す。
+図では{\tt lwatcher}デーモンがログインノード上で稼働している。
+{\tt lwatcher}デーモンでは2つのスレッドが動作している。
+一つは観測データファイルの生成を監視し、ファイルが生成されるとそのデー
+タをメモリに読み込むスレッド。
+もう一つのスレッドはアプリケーションからのデータ転送要求を受け付けて処理する
+スレッドである。
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{インストール}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%==============================================================================
+\subsection{必要なライブラリ}
+%==============================================================================
+JIT-DTツールが必要とするライブラリの中で多くのLinuxディストリビューショ
+ンでデフォルトでインスールされていないライブラリを以下列挙する。
+%------------------------------------------------------------------------------
+\subsubsection{クライアント}
+%------------------------------------------------------------------------------
+\begin{itemize}
+\item libcurl
+\end{itemize}
+
+%------------------------------------------------------------------------------
+\subsubsection{サーバ}
+%------------------------------------------------------------------------------
+\begin{itemize}
+\item libmicrohttdp
+\end{itemize}
+
+%==============================================================================
+\subsection{インストール手順}
+%==============================================================================
+インストール後以下のディレクトリが作成される。
+\begin{verbatim}
+   /opt/nowcast/bin
+   /opt/nowcast/lib
+   /opt/nowcast/include
+\end{verbatim}
+
+クライアントおよびサーバプログラムをインスールする場合:
+\begin{lstlisting}[frame=single]
+$ make depend
+$ make
+$ make install
+\end{lstlisting}
+
+\noindent
+クライアントのみの場合:
+\begin{lstlisting}[frame=single]
+$ make depend
+$ make client
+$ make install_client
+\end{lstlisting}
+
+\noindent
+サーバのみの場合:
+\begin{lstlisting}[frame=single]
+$ make depend
+$ make server
+$ make install_server
+\end{lstlisting}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{利用法}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ここでは以下の環境を仮定する。
+管理者端末からリモートサーバやログインノードにsshでアクセスする。
+
+\begin{center}
+\begin{tabular}{l|l} \hline
+管理者端末名 & myterminal \\ 
+リモートサーバ名 & pawr-dp03 \\
+リモートサーバユーザ名 & server \\
+ログインノード名 & 134.160.185.83(klogin3) \\
+ログインノードユーザ名 & a03228 \\ \hline
+\end{tabular}
+\end{center}
+
+なお、「京」コンピュータのホスト名k.aics.riken.jpを使ってログインノード
+にアクセスすると、ロードバランサによってノードが割り振られるため同じロ
+グインノードに接続されるとは限らない。
+後述する利用法ではログインノードのローカルファイルシステムを使用した
+例となっているため、ログインノードは固定されている必要がある。
+
+%==============================================================================
+\subsection{myterminal側}
+%==============================================================================
+\begin{enumerate}
+\item ~/.ssh/configに以下を登録する。
+\begin{verbatim}
+    Host *
+    　　ForwardAgent yes
+\end{verbatim}
+
+\item  agentに転送先(Kコンピュータ)用private keyを登録
+\begin{verbatim}
+   $ ssh-add ~/.ssh/id_rsaxxx
+\end{verbatim}
+\end{enumerate}
+
+%==============================================================================
+\subsection{ログインノードklogin3}
+%==============================================================================
+
+%------------------------------------------------------------------------------
+\subsubsection{ファイルシステム経由}
+%------------------------------------------------------------------------------
+ログインノードにログインし、以下のコマンドを実行する。
+\begin{lstlisting}[frame=single]
+$ mkdir /scratch/ra000022/a03228/data
+$ mkdir /tmp/bell
+$ ./kwatcher /tmp/bell /scratch/ra000022/a03228/data/
+\end{lstlisting}
+
+この例では、/tmp/bell/はリモートサーバとの同期用に使われ、
+/scratch/ra000022/a03228/data/にリモートサーバからのファイルが格納される。
+
+%------------------------------------------------------------------------------
+\subsubsection{通信経由}
+%------------------------------------------------------------------------------
+ログインノードにログインし、以下のコマンドを実行する。
+\begin{lstlisting}[frame=single]
+$ mkdir /opt/nowcast/data
+$ lwatcher -v /opt/nowcast/data
+\end{lstlisting}
+
+この例では、/opt/nowcast/data/ディレクトリにリモートサーバからのファイ
+ルが格納される。
+
+%==============================================================================
+\subsection{リモートサーバpawr-dp03}
+%==============================================================================
+myterminalからリモートサーバにログインし以下を実行する。
+\begin{enumerate}
+\item 
+ssh agentが動作していてKコンピュータにパスワードなしでログイン出来るか確認する。
+\begin{verbatim}
+   $ ssh a03228@k.aics.riken.jp
+\end{verbatim}
+単なる動作確認だけでなく、一度sshでログインすることにより、
+known\_hostsに転送先のIPアドレスが登録されることが重要である。
+known\_hostsに転送先のIPアドレスが登録されていないと、
+watch\_and\_transferがscpを起動した時インタラクティブにknown\_hostsに登
+録するかどうか確認を求めてくるが、watch\_and\_transferは応えないために
+scpが待状態となってしまう。
+
+\item 以下を実行する。
+\begin{verbatim}
+   $ ./watch_and_transfer \
+       sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data/  \
+       /mnt/latest-kobe \
+       -n /tmp/ditready:/tmp/bell/ \
+       -s 2016-1024/16/ -v
+\end{verbatim}
+上記例は以下の意味となる。
+{\tt watch\_and\_transfer}は、{\tt /mnt/latest-kobe}ディレクトリ下にファ
+イルが生成されるのを検知すると、
+{\tt sftp}コマンドを使ってリモートマシン134.160.185.83の{\tt a03228}アカウント
+の{\tt /scratch/ra000022/a03228/data/}にそのファイルを転送する。
+最初に監視するディレクトリを指定する必要があり、ここでは
+{\tt 2016-1024/16/}ディレクトリを指定している。
+すなわち、{\tt watch\_and\_transfer}は{\tt
+  /mnt/latest-kobe/2016-1024/16/ディレクトリ}を監視する。
+\end{enumerate}
+
+\subsubsection{デーモン実行}
+上記で動作確認したらデーモンとして実行する。デーモン実行のためのスクリプト
+jit-dtが用意されている。
+jit-dt中のPRIVATE\_KEY環境変数にはクライアントノードにscpするために
+必要となるsshプライベート鍵ファイルを指定する。
+デーモン起動は以下の通り。
+\begin{lstlisting}[frame=single]
+$ jit-dt start
+\end{lstlisting}
+jit-dtはssh鍵のパスフレーズを聞いてくるので、それを入力すると
+デーモンがスタートする。
+
+%==============================================================================
+\subsection{ローカルテスト}
+%==============================================================================
+
+%------------------------------------------------------------------------------
+\subsubsection{ファイルシステム経由}\label{subsubsec:via-file}
+%------------------------------------------------------------------------------
+ここではホスト{\tt hibiki}の場合を示す。
+\begin{enumerate}
+\item {\tt kwatcher}を起動する。
+\begin{lstlisting}[frame=single]
+  $ kwatcher -v -d /opt/nowcast/bell /opt/nowcast/data
+\end{lstlisting}
+/opt/nowcast/bellはリモートファイル生成ツールとの同期用ディレクトリである。
+観測データは/opt/nowcast/dataに格納される。
+
+\item アプリケーションを起動する。ここではデータ転送が正しく行われているかを
+テストするtranstest2を実行する。
+\begin{lstlisting}[frame=single]
+  $ transtest2 /opt/nowcast/data/ 10
+\end{lstlisting}
+観測データが格納されているディレクトリ{\tt /opt/nowcast/data}を指定する。
+2番目の引数はデータの取得回数である。
+PWRは30秒ごとにファイルを生成しているので5分間のデータを取得している。
+
+\item {\tt ktestgen.pl}ツールを使って保存してある過去データを転送する。
+\begin{lstlisting}[frame=single]
+  $ ktestgen.pl /opt/nowcast/testdata/JITDTLOG.20170510 \
+       /opt/nowcast/testdata/data.tar /opt/nowcast/bell/ \
+       /opt/nowcast/data/ 10 10
+\end{lstlisting}
+{\tt /opt/nowcast/testdata/JITDTLOG.20170510}は、2017年5月10日17:00から17:30の
+期間の神戸PWRが生成したデータのログである。
+{\tt /opt/nowcast/testdata/data.tar}は、各観測データをgzipで圧縮した上で
+それらファイルをtarで一つのファイルにまとめたものである。
+{\tt /opt/nowcast/bell/}は{\tt kwacther}が監視しているディレクトリである。
+
+最後の2つのアーギュメントはそれぞれ、データ生成間隔（秒）と生成回数であ
+る。データ生成間隔のデフォルト値は観測データ生成間隔と同じ30秒である。
+アプリケーションの実行時間に合わせてデータ生成間隔を変更することが可能
+である。
+
+生成回数のデフォルト値は{\tt /opt/nowcast/testdata/JITDTLOG.20170510}で
+示されている観測データ分である。
+デバッグ目的で生成回数を変更したい場合に使用する。
+
+\end{enumerate}
+
+%------------------------------------------------------------------------------
+\subsubsection{通信経由}\label{subsubsec:via-comm}
+%------------------------------------------------------------------------------
+現時点で利用環境が無いため説明省略＆機能試験も実施していない。
+%ここではhibikiの場合を示す。
+%\begin{enumerate}
+%
+%\end{enumerate}
+
+%=============================================================================
+\subsection{プログラミング}
+%=============================================================================
+JIT-DTのアプリケーション向けに以下のライブラリが用意されている。
+
+\begin{itemize}
+\item libjitdt-k.a\\
+逐次アプリケーション用ファイルシステム経由JIT
+\item libjitdt-pk.a\\
+MPIアプリケーション用ファイルシステム経由JIT
+\item libjitdt-l.a\\
+逐次アプリケーション用通信経由JIT
+\item libjitdt-pl.a\\
+MPIアプリケーション用通信経由JIT
+\end{itemize}
+
+サンプルプログラムを付録\ref{sec:sample-program}節に示す。
+以下はサンプルプログラムのMakefile例である。
+ファイルシステム経由用と通信経由用の2つのバイナリを生成する。
+
+\lstinputlisting[frame=single]{Makefile.sample}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{コマンド}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%==============================================================================
+\subsection{watch\_and\_transfer}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt watch\_and\_transfer - transer a new data to a remote client}
+
+\item SYNOPSIS \\
+{\tt watch\_and\_transfer $<$url$>$ $<$watching directory path$>$}\\
+{\tt ~~~~~~~~~~~~~~~~~~[-s $<$start directory path$>$]}\\
+{\tt ~~~~~~~~~~~~~~~~~~[-n $<$local file$>$:$<$remote notification directory$>$]}\\
+{\tt ~~~~~~~~~~~~~~~~~~[-f $<$log file name $>$] [-D] [-v] [-d] [-k]}
+
+\item DESCRIPTION \\
+{\tt watch\_and\_transfer} is a command to transer a new data to a
+remote client.
+{\tt $<$url$>$} specifies a directory on the remote client led by a
+  procotol, one of sftp, scp, and http.
+Here are exmples in case of sftp and scp, 
+\begin{verbatim}
+    sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data
+    scp:a03228@134.160.185.83:/scratch/ra000022/a03228/data
+\end{verbatim}
+The speficiation after ``sftp:'' or ``scp:'' is the same one in the sftp/scp
+command.
+
+{\tt $<$watching directory path$>$} specifies where this command watches new
+files/directories.
+If a new directory is created, it also watches the new directory.
+
+The {\tt $<$start directory path$>$} must be under the {\tt $<$watching directory path$>$} directory. In case of PWR, an observed data
+is stored under a directory whose path represents the created time.
+
+For example, assuming that the top directory specified {\tt $<$watching directory path$>$} is ``{\tt /mnt/latest-kobe}'' and 
+when a file is created at 2017/05/03/00:01,
+it is located in the ``{\tt /mnt/latest-kobe/2017-0503/00/01/} '' directory.
+Thus the following directories are visible at the time of 2017/05/03/00:01.
+\begin{verbatim}
+    /mnt/latest-kobe/
+                     2017-0501/
+                               ....
+                     2017-0502/
+                               ....
+                     2017-0503/
+                               00/
+                                 00/
+                                 01/
+\end{verbatim}
+
+If let {\tt watch\_and\_transfer} start to watch files from 2017/05/03/00:10
+under the ``{\tt /mnt/latest-kobe/}'',  the first watching point is 
+``{\tt /mnt/latest-kobe/2017-0503/00/10/} '' and the command should be
+as follows:
+\begin{verbatim}
+   watch_and_transfer \
+     sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data \
+     /mnt/latest-kobe \
+     -s 2017-0503/00/10
+\end{verbatim}
+
+The {\tt -n} option specifies a working file name and remote directory.
+The {\tt /tmp/ditready} and the {\tt /tmp/bell directory} 
+are in default.
+In the following example, the {\tt /tmp/myditready} file is created in
+the local machine and a notification file, whose name is 0 through 9,
+is transferred to the {\tt /tmp/ishikawa} directory in the remote
+client.
+
+\begin{verbatim}
+   watch_and_transfer \
+     sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data \
+     /mnt/latest-kobe \
+     -s 2017-0503/00/10 \
+     -f /tmp/myditready:/tmp/ishikawa/
+\end{verbatim}
+
+
+When the command becomes a daemon by specifying the {\tt -D} option, all
+messages from the command is written to a logging file whose name is
+``{\tt /tmp/JITDTLOG}'' in default.  The {\tt -f} option replaces the
+default file name with the spefied name.
+
+The {\tt -D} option demoizes the tool.
+The {\tt -d} option is for debugging puerpose.
+If the {\tt -v} option is specified, more detailed messages are produced.
+
+If the {\tt -k} option is specified in the sftp protocol, the sftp
+process does not create and exit every transfer, instead, the process continues
+to serve. This would eliminate a sftp process invocation time
+if the data transfer often happened before disconnecting the sftp process
+by the remote client.
+\end{itemize}
+
+%==============================================================================
+\subsection{jitdt}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt jitdt - control the watch\_and\_transfer daemon}
+
+\item SYNOPSIS \\
+{\tt jitdt  start [$<$options for watch\_and\_transfer$>$]} \\
+{\tt        top}
+
+\item DESCRIPTION \\
+{\tt jitdt} is a script to control a daemon of the {\tt
+  watch\_and\_transfer} command.
+\end{itemize}
+
+%==============================================================================
+\subsection{kwatcher}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt kwatcher - watch incoming file and notify the application via a file system}
+
+\item SYNOPSIS \\
+{\tt $<$watching directory$>$ $<$data directory$>$ [-h history count] [-d] [-v]}
+
+\item DESCRIPTION \\
+The {\tt kwatcher} command is to watch incoming file and notify the application
+via a file system.
+This method using a file system is called 
+the {\it file passing} method.
+
+In this document, please see the Section \ref{subsec:kwatcher}.
+\end{itemize}
+
+%==============================================================================
+\subsection{lwatcher}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt lwatcher - watch incoming file and notify the application via communication}
+
+\item SYNOPSIS \\
+{\tt lwatcher $<$watching directory$>$ [-h history count] [-D] [-d] [-v]}
+
+\item DESCRIPTION \\
+The {\tt lwatcher} command is to watch incoming file and notify the application
+via communication. This method using communication is called 
+the {\it message passing} method.
+
+In this document, please see the Section \ref{subsec:lwatcher}.
+\end{itemize}
+
+%==============================================================================
+\subsection{ktestgen.pl}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt ktestgen.pl - simulates watch\_and\_transfer}
+
+\item SYNOPSIS \\
+{\tt ktestgen.pl   $<$log file$>$  $<$tar file$>$}
+{\tt               $<$watching directory$>$ $<$out directory$>$}
+{\tt               [inteval] [count]}
+
+\item DESCRIPTION \\
+This is a tool to simulate {\tt watch\_and\_transfer} for the file passing
+method.
+It uses old recorded data generated by PWR.
+In this document, please see the Section \ref{subsubsec:via-file}.
+\end{itemize}
+
+%==============================================================================
+\subsection{ltestgen.pl}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt ltestgen.pl - simulates watch\_and\_transfer}
+
+\item SYNOPSIS \\
+{\tt ltestgen.pl   $<$log file$>$  $<$tar file$>$}
+{\tt               $<$watching directory$>$ $<$out directory$>$}
+{\tt               [inteval] [count]}
+
+\item DESCRIPTION \\
+This is a tool to simulate {\tt watch\_and\_transfer} for the message passing
+method.
+It uses old recorded data generated by PWR.
+In this document, please see the Section \ref{subsubsec:via-comm}.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{API}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%==============================================================================
+\subsection{jitopen}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt jitopen - a file generated by the jit-dt tool}
+
+\item SYNOPSIS \\
+{\tt \#include $<$jitclient.h$>$}\\ \noindent
+{\tt int jitopen(const char *place, char *fname, int ftype);}
+
+\item DESCRIPTION \\
+It initializes a jit-dt library.
+This is a collective operation, i.e., all MPI ranks must call this function.
+The place is either a file path or machine name with TCP port.
+In the case of jitkclient.o is linked,
+te place is a file path which specifies a watching directory.
+In the case of jitlclient.o is linked,
+the place is a host name with a TCP IP port that specifies the endpoint
+of a jit-dt daemon process on a client node.
+
+When the jitopen successfully returns, the fname contains a file name
+being opend, and the return value is a file/socket descriptor.
+The ftype is one of the following values:
+\begin{itemize}
+\item {\tt FTYPE\_VR}
+\item {\tt FTYPE\_ZE}
+\end{itemize}
+
+%%\item EXAMPLE\\
+\end{itemize}
+
+%==============================================================================
+\subsection{jitclose}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt jitclose - close a descritor and release a jit-dt tool}
+
+\item SYNOPSIS \\
+{\tt \#include $<$jitclient.h$>$}\\ \noindent
+{\tt int jitclose(int fd);}
+
+\item DESCRIPTION \\
+It closes a descriptor.
+This is a collective operation, i.e., all MPI ranks must call this function.
+\end{itemize}
+
+%==============================================================================
+\subsection{jitread}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt jitread - close a descritor and release a jit-dt tool}
+
+\item SYNOPSIS \\
+{\tt \#include $<$jitclient.h$>$}\\ \noindent
+{\tt int jitread(int fd, void *buf, size\_t size);}
+
+\item DESCRIPTION \\
+It reads up to {\tt size} bytes from a descriptor {\tt fd} in to the {\tt buf}.
+On success, it returns the number of bytes read.
+This is a collective operation, i.e., all MPI ranks must call this function.
+
+In the case of jitkclient.o, this is the idential of Linux read system call.
+In the case of jitcclient.o, it communicates with a jit-dt daemon process
+on a login node.
+\end{itemize}
+
+%==============================================================================
+\subsection{jitget}
+%==============================================================================
+\begin{itemize}
+\item NAME \\
+{\tt jitget - get a data set via a jit-dt tool}
+
+\item SYNOPSIS \\
+{\tt \#include $<$jitclient.h$>$}\\ \noindent
+{\tt int jitget(char *place, char *fname, void *data, void *size);}
+
+\item DESCRIPTION \\
+The {\tt jitget} reads a data set to the {\tt data} area.
+The {\tt size} specifies how the {\tt data} area is partitioned.
+This is a collective operation, i.e., all MPI ranks must call this function.
+An example is shown as follows:
+\begin{verbatim}
+#define BUFSIZE (40*1024*1024)
+struct vrze {
+    char	vr[BUFSIZE];
+    char	ze[BUFSIZE];
+} data;
+struct vrze_size {
+    int		vsize;
+    int		zsize;
+} vrze_size[2];
+vrze_size[0].vsize = vrze_size[0].zsize = BUFSIZE;
+cc = jitget("/opt/nowcast/bell", &data, &vrze_size);
+\end{verbatim}
+\end{itemize}
+
+%=============================================================================
+\newpage
+\appendix
+\section{サンプルプログラム}\label{sec:sample-program}
+%%\begin{multicols}{2}
+%\footnotesize
+\lstinputlisting[frame=single]{sample.c}
+%%\end{multicols}
+
+
+\end{document}
