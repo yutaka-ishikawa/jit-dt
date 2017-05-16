@@ -21,7 +21,7 @@
 #define SCMD_STATUS	"STAT"
 #define SCMD_READ	"READ"
 #define SCMD_REPLY	"REPL"
-#define SCMD_STRSIZ	128
+#define SCMD_STRSIZ	256	/* The current finame string size is 95 */
 
 struct trans_cmd {
     char	cmd[CMD_SIZE+1];

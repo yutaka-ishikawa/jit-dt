@@ -119,8 +119,9 @@ netsendreq(int sock, int cmd, int opt1, int opt2, int op3)
     struct trans_cmd	tcmd;
 
     if (cmd >= CMD_MAX) return -1;
+    memset(&tcmd, 0, sizeof(struct trans_cmd));
     strcpy(tcmd.cmd, strcmd[cmd]);
-    tcmd.opt1 = opt1; tcmd.opt2 = opt2;
+    tcmd.opt1 = opt1; tcmd.opt2 = opt2; tcmd.opt3 = op3;
     tcmd.len = 0;
     cc = netwrite(sock, (char*) &tcmd, sizeof(tcmd));
     return cc;

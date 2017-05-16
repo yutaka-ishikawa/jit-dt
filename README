@@ -5,10 +5,10 @@
 
 2) Installation
   2-1) For client only
-   $ make watch_and_transfer
-   or
-   $ make watch_and_transfer2
-  2-2) For client and server
+   $ make client
+  2-2) For server only
+   $ make server
+  2-3) For both client and server
    $ make
 
 3) How to use watch_and_transfer
@@ -35,10 +35,10 @@
   3-4) The -s option is used in case of the following usage:
      A file is created under the directory whose path represents created time.
      For example, a file created at 2016/08/14/15:10 is created
-     under the /mnt/data/2016-08-14/15/10, and another file created
-     at 2016/08/14/16:00 is located under the /mnt/data/2016-08-14/16/00.
+     under the /mnt/data/2016-0814/15/10, and another file created
+     at 2016/08/14/16:00 is located under the /mnt/data/2016-0814/16/00.
      If the following command starts the data transfer at 16:00 on 2016/08/14.
      $ ./watch_and_transfer sftp:yisikawa@seg-gw.nict.go.jp:data \
-       /mnt/data/ -s 2016-08-14/20/ -v
+       /mnt/data/ -s 2016-0814/20/ -v
      That is, it watches directories: /mnt/data/, /mnt/data/2016-08-14,
-     and /mnt/data2016-08-14/20/.
+     and /mnt/data2016-0814/20/.

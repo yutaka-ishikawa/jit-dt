@@ -117,8 +117,9 @@ transfer(void *param)
     for (;;) {
 	socklen_t	addrlen;
 	int		cmd, opt[3], retval[3], totsz, sz, i;
+	char		tmpstr[SCMD_STRSIZ];
 	histdata	*hp;
-	char		*fname = 0, *cp, *tmp;
+	char		*fname = 0, *cp;
 	int		sock;
 	int		tfd = -1;
 
@@ -184,8 +185,11 @@ transfer(void *param)
 		    fprintf(stderr, "Cannot allocate memory %d\n", totsz);
 		    exit(-1);
 		}
+		tmpstr[0] = 0;
 		for (totsz = 0, i = 0; i < FTYPE_NUM; i++) {
 		    if ((tfd = open(hp->fname[i], O_RDONLY)) > 0) {
+			strcat(tmpstr, hp->fname[i]);
+			strcat(tmpstr, FTSTR_SEPARATOR);
 			sz = read(tfd, &cp[totsz], opt[i]);
 			if (sz < 0) {
 			    fprintf(stderr, "Cannot read file: %s\n",
@@ -196,8 +200,9 @@ transfer(void *param)
 			close(tfd);
 		    }
 		}
-		tmp = basename(hp->fname[0]);
-		if (trans_replyget(sock, hp->date, tmp, cp, totsz, retval) >= 0) {
+		/* removing separation */
+		tmpstr[strlen(tmpstr) - 1] = 0;
+		if (trans_replyget(sock, hp->date, tmpstr, cp, totsz, retval) >= 0) {
 		    /* successfuly transfered */
 		    histremove();
 		} else { /* client was dead, keeping the entry */

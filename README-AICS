@@ -17,9 +17,9 @@ $ jit-dt help
 ● 転送元での設定
   1) ssh agentが働いていてKコンピュータにパスワードなしでログイン出来るか確認
    $ ssh a03228@k.aics.riken.jp
-   これかならずやって、known_hostsに転送元のIPアドレスが登録されておくこと。
+   これかならずやって、known_hostsに転送先のIPアドレスが登録されておくこと。
 　 そうでないと、watch_and_transferが動作時にsshdがインタラクティブにknown_hosts
-   に登録するかどうか効いてくるが、watch_and_transferは応えないために止まる。
+   に登録するかどうか聞いてくるが、watch_and_transferは応えないために止まる。
   2) 以下を実行
    $ mkdir /tmp/ishikawa
    $ ./watch_and_transfer \
@@ -35,8 +35,32 @@ $ jit-dt help
 
   /scratch/ra000022/a03228/data/の下にJIT-READYというファイルが出来、ここの
 　ファイルの中にファイル名が格納される。
+
+● Cluster (hibiki)
+  $ kwatcher -v -d /opt/nowcast/bell /opt/nowcast/data
+  $ transtest2 /opt/nowcast/data/ 10
+  $ ktestgen.pl /opt/nowcast/testdata/JITDTLOG.20170510 \
+       /opt/nowcast/testdata/data.tar /opt/nowcast/bell/ \
+       /opt/nowcast/data/ 10 10
 　
 
 ● Cluster (hibiki)
-  $ lwatcher -d -v ~/work/
+  $ lwatcher -d -v /opt/nowcast/data
+  $ ltranstest2 localhost 10
+  $ ltestgen.pl /opt/nowcast/testdata/JITDTLOG.20170510 \
+       /opt/nowcast/testdata/data.tar /opt/nowcast/data/ 10 10
+
+
+hibiki(GLOBAL)： hibiki.aics.riken.jp
+hibiki(LOCAL)：  hibiki.aics27.riken.jp　クラスタヘッドノード
+b01,b02,b03,b04： 計算ノード
+
+/opt/nowcast 
+　hibiki(GLOBAL), hibiki(LOCAL), b01, b02, b03, b04 で利用可能
+/global_hibiki
+　hibiki(GLOBAL), hibiki(LOCAL), b01, b02, b03, b04 で利用可能
+
+hibiki(LOCAL), b01, b02, b03, b04
+    $ module load openmpi/2.1.0 により OpenMPI が利用可能
+      hibiki(GLOBAL)上ではmoduleロード必要なし
 

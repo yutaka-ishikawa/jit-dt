@@ -33,8 +33,8 @@ static int	keep_proc;
 
 static char	topdir[PATH_MAX];
 static char	startdir[PATH_MAX];
-static char	lntfyfile[PATH_MAX];
-static char	rntfydir[PATH_MAX];
+static char	lntfyfile[PATH_MAX] = "/tmp/ditready";
+static char	rntfydir[PATH_MAX] = "/tmp/bell/";
 static char	combuf[PATH_MAX + 128];
 static char	lognmbase[PATH_MAX] = "/tmp/JITDTLOG";
 

@@ -1,8 +1,9 @@
 .PHONY: all
-SERVER_CMDS=http_daemon http_put watch_and_transfer
+SERVER_CMDS=http_daemon http_put watch_and_transfer jit-dt
 CLIENT_CMDS=kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
+	ktestgen.pl ltestgen.pl
 
 HOSTNAME=$(shell hostname)
 MPICC = mpicc
@@ -16,10 +17,16 @@ INSTALL = install
 #INSTBIN = $(HOME)/bin
 INSTBIN = /opt/nowcast/bin
 INSTINCL = /opt/nowcast/include
+INSTLIB = /opt/nowcast/lib
 OBJS =	misclib.o translib.o jitclient.o jitkclient.o jitcclient.o \
 	inotifylib.o watch_and_transfer.o http_put.o http_daemon.o \
-	kwatcher.o  lwatcher.o transtest.o transgen.o
-POBJ =  ptranstest.o ptranstest2.o
+	kwatcher.o  lwatcher.o transtest.o transtest2.o transgen.o
+POBJS =  ptranstest.o ptranstest2.o pjitclient.o
+LIBS = libjitdt-k.a libjitdt-pk.a libjitdt-l.a libjitdt-pl.a
+KLIB = jitclient.o jitkclient.o inotifylib.o misclib.o
+PKLIB = pjitclient.o jitkclient.o inotifylib.o misclib.o
+LLIB = jitclient.o jitcclient.o inotifylib.o misclib.o
+PLLIB = pjitclient.o jitcclient.o inotifylib.o misclib.o
 CCFLAGS = -DUSE_LOCKF -O3 -Wall -g -c \
 	-I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0/include/
 MPICCFLAGS = -DMPIENV $(CCFLAGS) $(FJCFLAGS)
@@ -33,63 +40,101 @@ LDFLAGS_CLIENT = -L/usr/lib64 ../curl-7.46.0/lib/.libs/libcurl.a -lz -lrt
 .c.o:
 	$(CC) $(CCFLAGS) -c $< -DDEBUG
 #
-all: server client
+all: server client libs
 server: $(SERVER_CMDS)
 client: $(CLIENT_CMDS)
-install: install_server install_client
+libs: $(LIBS)
+#
+libjitdt-k.a: $(KLIB)
+	ar rs $@ $^
+libjitdt-pk.a: $(PKLIB)
+	ar rs $@ $^
+libjitdt-l.a: $(LLIB)
+	ar rs $@ $^
+libjitdt-pl.a: $(PLLIB)
+	ar rs $@ $^
+install: install_server install_client install_lib
 install_server: server
-	$(INSTALL) watch_and_transfer jit-dt $(INSTBIN) 
+	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
+	$(INSTALL) $(SERVER_CMDS) $(INSTBIN) 
 install_client: client
-	$(INSTALL) kwatcher $(INSTBIN) 
-	$(INSTALL) lwatcher $(INSTBIN) 
-	$(INSTALL) transtest ptranstest $(INSTBIN) 
-	$(INSTALL) transtest2 ptranstest2 $(INSTBIN) 
-	$(INSTALL) ltranstest pltranstest $(INSTBIN) 
-	$(INSTALL) ltranstest2 pltranstest2 $(INSTBIN) 
-	$(INSTALL) ktestgen.pl ltestgen.pl $(INSTBIN)
-	$(INSTALL) jitclient.h $(INSTINCL)
+	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
+	$(INSTALL) $(CLIENT_CMDS) $(INSTBIN) 
+install_lib: libs
+	[ -d $(INSTINCL) ] || mkdir -p $(INSTINCL)
+	[ -d $(INSTLIB) ] || mkdir -p $(INSTLIB)
+	$(INSTALL) jitclient.h misclib.h $(INSTINCL)
+	$(INSTALL) $(LIBS) $(INSTLIB)
 
 .PHONY: depend
 depend:  $(OBJS:.o=.c)
 	-@ for i in $^; do cpp -MM $$i | sed "s/\ [_a-zA-Z0-9][_a-zA-Z0-9]*\.c//g" >> depend.inc; done
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(POBJ) $(COMMANDS) depend.inc
+	rm -f $(OBJS) $(LIBS) $(POBJS) $(COMMANDS) depend.inc
 #
 http_daemon: http_daemon.o
-	$(CC) -o http_daemon $^ $(LDFLAGS_HTTP_DAEMON) 
+	$(CC) -o $@ $^ $(LDFLAGS_HTTP_DAEMON) 
 http_put: http_put.o
-	$(CC) -o http_put http_put.o $(LDFLAGS_HTTP_PUT) 
+	$(CC) -o $@ $^ $(LDFLAGS_HTTP_PUT) 
 watch_and_transfer: watch_and_transfer.o misclib.o translib.o inotifylib.o
-	$(CC) -o watch_and_transfer $^ $(LDFLAGS_HTTP_PUT)
-kwatcher: kwatcher.o misclib.o jitkclient.o inotifylib.o
-	$(CC) -o kwatcher $^ $(LDFLAGS_CLIENT)
-lwatcher: lwatcher.o jitcclient.o  misclib.o inotifylib.o
-	$(CC) -o lwatcher $^ $(LDFLAGS_CLIENT) -lpthread
-transtest: transtest.o misclib.o jitclient.o jitkclient.o
-	$(CC) -o transtest $^
-ptranstest: ptranstest.o misclib.o pjitclient.o jitkclient.o
-	$(MPICC) -o ptranstest $^
-transtest2: transtest2.o misclib.o jitclient.o jitkclient.o
-	$(CC) -o transtest2 $^
-ptranstest2: ptranstest2.o misclib.o jitclient.o jitkclient.o
-	$(MPICC) -o ptranstest2 $^
-ltranstest: transtest.o misclib.o jitclient.o jitcclient.o
-	$(CC) -o ltranstest $^
-pltranstest: ptranstest.o misclib.o pjitclient.o jitcclient.o
-	$(MPICC) -o pltranstest $^
-ltranstest2: transtest2.o misclib.o jitclient.o jitcclient.o
-	$(CC) -o ltranstest2 $^
-pltranstest2: ptranstest2.o misclib.o pjitclient.o jitcclient.o
-	$(MPICC) -o pltranstest2 $^
+	$(CC) -o $@ $^ $(LDFLAGS_HTTP_PUT)
+kwatcher: kwatcher.o libjitdt-k.a
+	$(CC) -o $@ $^ $(LDFLAGS_CLIENT)
+lwatcher: lwatcher.o libjitdt-l.a
+	$(CC) -o $@ $^ $(LDFLAGS_CLIENT) -lpthread
+transtest: transtest.o libjitdt-k.a
+	$(CC) -o $@ $< -L. -ljitdt-k
+ptranstest: ptranstest.o libjitdt-pk.a
+	$(MPICC) -o $@ $< -L. -ljitdt-pk
+transtest2: transtest2.o libjitdt-k.a
+	$(CC) -o $@ $< -L. -ljitdt-k
+ptranstest2: ptranstest2.o libjitdt-pk.a
+	$(MPICC) -o $@ $< -L. -ljitdt-pk
+ltranstest: transtest.o libjitdt-l.a
+	$(CC) -o $@ $< -L. -ljitdt-l
+pltranstest: ptranstest.o libjitdt-pl.a
+	$(MPICC) -o $@ $< -L. -ljitdt-pl
+ltranstest2: transtest2.o libjitdt-l.a
+	$(CC) -o $@ $< -L. -ljitdt-l
+pltranstest2: ptranstest2.o libjitdt-pl.a
+	$(MPICC) -o $@ $< -L. -ljitdt-pl
 transgen: transgen.o misclib.o jitkclient.o
-	$(CC) -o transgen $^
+	$(CC) -o $@ $^
 #
 pjitclient.o: jitclient.c
-	$(MPICC) $(MPICCFLAGS) -o pjitclient.o -c jitclient.c
+	$(MPICC) $(MPICCFLAGS) -o $@ -c $<
 ptranstest.o: transtest.c
-	$(MPICC) $(MPICCFLAGS) -o ptranstest.o -c transtest.c
+	$(MPICC) $(MPICCFLAGS) -o $@ -c $<
 ptranstest2.o: transtest2.c
-	$(MPICC) $(MPICCFLAGS) -o ptranstest2.o -c transtest2.c
+	$(MPICC) $(MPICCFLAGS) -o $@ -c $<
+
+#kwatcher: kwatcher.o misclib.o jitkclient.o inotifylib.o
+#	$(CC) -o kwatcher $^ $(LDFLAGS_CLIENT)
+#lwatcher: lwatcher.o jitcclient.o  misclib.o inotifylib.o
+#	$(CC) -o lwatcher $^ $(LDFLAGS_CLIENT) -lpthread
+#transtest: transtest.o misclib.o jitclient.o jitkclient.o
+#	$(CC) -o transtest $^
+#ptranstest: ptranstest.o misclib.o pjitclient.o jitkclient.o
+#	$(MPICC) -o ptranstest $^
+#transtest2: transtest2.o misclib.o jitclient.o jitkclient.o
+#	$(CC) -o transtest2 $^
+#ptranstest2: ptranstest2.o misclib.o jitclient.o jitkclient.o
+#	$(MPICC) -o ptranstest2 $^
+#ltranstest: transtest.o misclib.o jitclient.o jitcclient.o
+#	$(CC) -o ltranstest $^
+#pltranstest: ptranstest.o misclib.o pjitclient.o jitcclient.o
+#	$(MPICC) -o pltranstest $^
+#ltranstest2: transtest2.o misclib.o jitclient.o jitcclient.o
+#	$(CC) -o ltranstest2 $^
+#pltranstest2: ptranstest2.o misclib.o pjitclient.o jitcclient.o
+#	$(MPICC) -o pltranstest2 $^
+#	$(INSTALL) kwatcher $(INSTBIN) 
+#	$(INSTALL) lwatcher $(INSTBIN) 
+#	$(INSTALL) transtest ptranstest $(INSTBIN) 
+#	$(INSTALL) transtest2 ptranstest2 $(INSTBIN) 
+#	$(INSTALL) ltranstest pltranstest $(INSTBIN) 
+#	$(INSTALL) ltranstest2 pltranstest2 $(INSTBIN) 
+#	$(INSTALL) ktestgen.pl ltestgen.pl $(INSTBIN)
 
 -include depend.inc

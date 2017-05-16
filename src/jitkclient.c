@@ -97,6 +97,7 @@ _jitget(char *place, char *fname, void *data, void *size)
     int		lckfd, fd;
     int		i, sz, ptr;
     char	*files[FTYPE_NUM+1];
+    char	curname[PATH_MAX];
     obs_size	*szp = (obs_size*) size;
     int		*bsize, *rsize;
 
@@ -109,9 +110,14 @@ _jitget(char *place, char *fname, void *data, void *size)
     fpath[sz] = 0;
     septype(fpath, files);
     bsize = szp->elem; rsize = (szp + 1)->elem;
+    fname[0] = 0;
     for (ptr = 0, i = 0; i < FTYPE_NUM; i++) {
-	if ((fd = open(files[i], O_RDONLY)) < 0) {
-	    fprintf(stderr, "jitget: cannot open file %s\n", files[i]);
+	strcat(fname, files[i]);
+	strcat(fname, FTSTR_SEPARATOR);
+	strcpy(curname, place);
+	strcat(curname, files[i]);
+	if ((fd = open(curname, O_RDONLY)) < 0) {
+	    fprintf(stderr, "jitget: cannot open file %s\n", curname);
 	    sz = 0;
 	} else {
 	    sz = read(fd, ((char*)data) + ptr, bsize[i]);
@@ -120,6 +126,8 @@ _jitget(char *place, char *fname, void *data, void *size)
 	rsize[i] = sz;
 	ptr += bsize[i];
     }
+    /* removing separator */
+    fname[strlen(fname) - 1] = 0;
     locked_unlock_nullify(lckfd);
     return 0;
 }

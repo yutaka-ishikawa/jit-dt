@@ -1,4 +1,4 @@
-PKCS11=~/.ssh/id_rsa-1
+PRIVATE_KEY=~/.ssh/id_rsa-1
 SCRIPT_FILE=~/SSH_AGENT_SCRIPT
 PID_FILE=~/JITDT_PID
 DAEMON=watch_and_transfer
@@ -14,7 +14,7 @@ case "$1" in
         echo -n "Starting jit-dt: "
 	SCRIPT=`ssh-agent`
 	eval $SCRIPT
-	ssh-add $PKCS11
+	ssh-add $PRIVATE_KEY
 	echo $SCRIPT >$SCRIPT_FILE
 	shift 1
 	$DAEMON $OPTIONS $* >$PID_FILE

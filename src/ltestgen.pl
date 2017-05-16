@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 #
 # Ex.
-#	./testgen.pl ../testdata/JITDTLOG.20170510 ../testdata/data.tar /tmp/ 2
+#	./ltestgen.pl ../testdata/JITDTLOG.20170510 ../testdata/data.tar /tmp/ 2
 #   In this case,
 #     something like the following commands are executed each interval time:
 #	cd /tmp/;
@@ -13,7 +13,7 @@ use Cwd;
 use Time::HiRes qw(setitimer ITIMER_REAL);
 
 if (@ARGV < 3) {
-    die("testgen.pl <log file> <tar file> <out directory> " .
+    die("ltestgen.pl <log file> <tar file> <out directory> " .
 	            "[inteval] [count] \n");
 }
 open(INPUT, $ARGV[0]) or die("Can't open file: $ARGV[0]");

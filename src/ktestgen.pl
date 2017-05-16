@@ -51,10 +51,11 @@ $SIG{ALRM} = sub {
 	    $line = <INPUT>;
 	} while ($line !~ /^[\d]/);
 	($_, $fname,$_) = split(',', $line);
-	$fname =~ /\s+(.+).dat/;
+	$fname =~ /kobe_(.+).dat/;
+	$fname = "kobe_" . $1 . ".dat";
 	$fgzname = $fname . ".gz";
-	$cmd = "cd " . $dir . "; tar --to-stdout -x -f " . $targzfile . $fgzname
-	    . " | gunzip >" . $fname;
+	$cmd = "cd " . $dir . "; tar --to-stdout -x -f " . $targzfile
+	    . " " . $fgzname  . " | gunzip >" . $fname;
 	$retval = system $cmd;
 	$time = localtime(time);
 	if ($retval == 0) {
@@ -65,7 +66,7 @@ $SIG{ALRM} = sub {
 	}
 	# belling to kwatcher
 	open(OUT, "> $bellpath");
-	printf OUT "$fname\n";
+	printf OUT "$fname";
 	close(OUT);
     }
     if ($count > 0) {
