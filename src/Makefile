@@ -1,3 +1,9 @@
+#
+# For K, -DUSE_LOCKF is required
+# For Hibiki, -DUSE_LOCKF must be removed
+#
+CCFLAGS = -DUSE_LOCKF
+
 .PHONY: all
 SERVER_CMDS=http_daemon http_put watch_and_transfer jit-dt
 CLIENT_CMDS=kwatcher lwatcher transgen \
@@ -27,9 +33,9 @@ KLIB = jitclient.o jitkclient.o inotifylib.o misclib.o
 PKLIB = pjitclient.o jitkclient.o inotifylib.o misclib.o
 LLIB = jitclient.o jitcclient.o inotifylib.o misclib.o
 PLLIB = pjitclient.o jitcclient.o inotifylib.o misclib.o
-CCFLAGS = -DUSE_LOCKF -O3 -Wall -g -c \
+CCFLAGS += -O3 -Wall -g -c \
 	-I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0/include/
-MPICCFLAGS = -DMPIENV $(CCFLAGS) $(FJCFLAGS)
+MPICCFLAGS += -DMPIENV $(CCFLAGS) $(FJCFLAGS)
 LDFLAGS_HTTP_DAEMON = \
 	../libmicrohttpd-0.9.47/src/microhttpd/.libs/libmicrohttpd.a \
 	-L$(HOME)/local/lib -lgcrypt -lgnutls -lpthread -lrt

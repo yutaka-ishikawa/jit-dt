@@ -13,7 +13,11 @@
 #include <regex.h>
 #include "misclib.h"
 
-#define USE_LOCKF	1
+//#define USE_LOCKF	1
+
+#ifndef USE_LOCK
+#include <sys/file.h>
+#endif /* ~USE_LOCK */
 
 static int	pid;
 static long	logage;
