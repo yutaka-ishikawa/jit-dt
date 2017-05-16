@@ -184,7 +184,13 @@ main(int argc, char **argv)
     dirnmcpy(outdir, argv[optind+1]);
     showsettings();
     args[0] = outdir;
+    DBG {
+	fprintf(stderr, "Try to lock in (%s)\n", outdir);
+    }
     lckfd = locked_lock(outdir);
+    DBG {
+	fprintf(stderr, "locked\n");
+    }
     args[1] = (void*) (long long) lckfd;
     mynotify(indir, 0, transfer, args, nflag);
     return 0;
