@@ -32,5 +32,6 @@ extern void	histwait();
 extern histdata	*histput(char *path, long long date, int type);
 extern void	regex_init();
 extern int	regex_match(char*, char*, char*);
+extern int	mydaemonize(char*);
 
 #endif /* JIT_MISCLIB */
