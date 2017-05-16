@@ -350,6 +350,19 @@ jit-dtはssh鍵のパスフレーズを聞いてくるので、それを入力すると
 \end{lstlisting}
 /opt/nowcast/bellはリモートファイル生成ツールとの同期用ディレクトリである。
 観測データは/opt/nowcast/dataに格納される。
+以下のメッセージが表示されない場合は他のkwatcherプロセスがファイルを
+ロックしたままになっている可能性が高い。そのプロセスをKILLする必要がある。
+\begin{lstlisting}[frame=single]
+   Daemon PID          : 0
+    Watching  directory : /opt/nowcast/bell/
+    History size        : 5
+    Flags               : -v -d  (3)
+*********************************************
+Try to lock in (/opt/nowcast/data/)
+locked
+IN_CREATE=0x100 IN_WRITE=0x8
+now watching directory /opt/nowcast/bell/, dirid(1)
+\end{lstlisting}
 
 \item アプリケーションを起動する。ここではデータ転送が正しく行われているかを
 テストするtranstest2を実行する。
