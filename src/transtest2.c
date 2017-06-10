@@ -83,7 +83,7 @@ main(int argc, char **argv)
 #endif
 	    printf("vr(%p) size(%d)\n", data.vr, vrzeqc_size[1].vsize);
 	    printf("ze(%p) size(%d)\n", data.ze, vrzeqc_size[1].zsize);
-	    printf("ze(%p) size(%d)\n", data.qc, vrzeqc_size[1].qsize);
+	    printf("qc(%p) size(%d)\n", data.qc, vrzeqc_size[1].qsize);
 	    printf("%s,%s\n", fname, timefmtbuf);
 	    fflush(stdout);
 #ifdef MPIENV
