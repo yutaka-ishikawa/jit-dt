@@ -45,7 +45,9 @@ $SIG{ALRM} = sub {
 	printf("Finish.\n");
 	exit 0;
     }
-    $nfiles = 2;
+    #
+    # Number of files generated at once
+    $nfiles = 3;
     while ($nfiles-- > 0) {
 	do {
 	    $line = <INPUT>;
