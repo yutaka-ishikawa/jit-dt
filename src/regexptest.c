@@ -13,19 +13,20 @@ char	*tpattern[] = {
 int
 main(int argc, char **argv)
 {
-    char	*regex = "kobe_\\(.*\\)_A08_pawr_\\(.*\\).dat";
+//    char	*regex = "kobe_\\(.*\\)_A08_pawr_\\(.*\\).dat";
+    char	*regex = ".*_\\(.*\\)_A08_pawr_\\(.*\\).dat";
     int		cc, i, j;
     unsigned long long	ll;
     regex_t	preg;
     size_t	sz;
     regmatch_t	pmatch[4];
 
+    if ((cc = regcomp(&preg, regex, 0)) < 0) {
+	printf("compile error\n");
+	sz = regerror(cc, &preg, errbuf, 1024);
+	printf("errbuf=%s\n", errbuf);
+    }
     for (j = 0; j < 3; j++) {
-	if ((cc = regcomp(&preg, regex, 0)) < 0) {
-	    printf("compile error\n");
-	    sz = regerror(cc, &preg, errbuf, 1024);
-	    printf("errbuf=%s\n", errbuf);
-	}
 	memset(pmatch, 0, sizeof(pmatch));
 	if ((cc = regexec(&preg, tpattern[j], 4, pmatch, 0)) < 0) {
 	    printf("error \n");
@@ -37,11 +38,12 @@ main(int argc, char **argv)
 		printf("no match: %s\n", tpattern[j]);
 		continue;
 	    }
+	    printf("macth: %s\n", tpattern[j]);
 	    for (i = 0; i < 4; i++) {
 		memset(buf, 0, 128);
 		strncpy(buf, &tpattern[j][pmatch[i].rm_so],
 			pmatch[i].rm_eo - pmatch[i].rm_so);
-		printf("%s(%d,%d)\n", buf, pmatch[i].rm_so, pmatch[i].rm_eo);
+		printf("\t[%d] %s(%d,%d)\n", i, buf, pmatch[i].rm_so, pmatch[i].rm_eo);
 	    }
 	    strncpy(buf, &tpattern[j][pmatch[1].rm_so],
 			pmatch[1].rm_eo - pmatch[1].rm_so);

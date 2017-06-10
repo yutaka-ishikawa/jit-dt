@@ -7,7 +7,7 @@
 #define LCK_FILE_2	"JITDT-READY-2"
 
 typedef struct obs_size {
-    int		elem[2];
+    int		elem[3];
 } obs_size;
 
 extern int	jitopen(char*, char*, int type);
@@ -24,12 +24,13 @@ extern char	*jitname(int);
  */
 #define FTYPE_VR_ENT	0
 #define FTYPE_ZE_ENT	1
+#define FTYPE_QC_ENT	2
 #define FTYPE_NUM	2
 //#define FTYPE_FLAG_ENT	2
 //#define FTYPE_NUM	3
 #define FTSTR_VR	"vr"
 #define FTSTR_ZE	"ze"
-//#define FTSTR_FLAG	"fl"
+#define FTSTR_QC	"qcf"
 
 #define FTSTR_SEPARATOR	";"
 #define FTCHR_SEPARATOR	';'
@@ -39,7 +40,7 @@ asc2ent(char *type)
 {
     if (!strcmp(type, FTSTR_VR)) return FTYPE_VR_ENT;
     if (!strcmp(type, FTSTR_ZE)) return FTYPE_ZE_ENT;
-//    if (!strcmp(type, FTSTR_FLAG)) return FTYPE_FLAG_ENT;
+    if (!strcmp(type, FTSTR_QC)) return FTYPE_QC_ENT;
     return FTYPE_VR_ENT; /* no match */
 }
 

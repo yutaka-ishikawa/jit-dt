@@ -28,11 +28,17 @@ static char	place[PATH_MAX+1];
 struct vrze {
     char	vr[BUFSIZE];
     char	ze[BUFSIZE];
+    char	qc[BUFSIZE];
 } data;
+/*
+ * vrzeqc_size[0] : IN  buffer sizes
+ * vrzeqc_size[1] : OUT read sizes
+ */
 struct vrze_size {
     int		vsize;
     int		zsize;
-} vrze_size[2];
+    int		qsize;
+} vrzeqc_size[2];
 
 int
 main(int argc, char **argv)
@@ -61,10 +67,12 @@ main(int argc, char **argv)
 	printf("Tanstest: nprocs(%d)\n", nprocs);
     }
 #endif
-    vrze_size[0].vsize = vrze_size[0].zsize = BUFSIZE;
+    vrzeqc_size[0].vsize
+	= vrzeqc_size[0].zsize
+	= vrzeqc_size[0].qsize = BUFSIZE;
     for (i = 0; i < iter; i++) {
 	memset(timebuf, 0, DBUF_SIZE);
-	if (jitget(place, fname, &data, &vrze_size) < 0) {
+	if (jitget(place, fname, &data, &vrzeqc_size) < 0) {
 	    printf("Cannot get a file\n");
 	    continue;
 	}
@@ -73,8 +81,9 @@ main(int argc, char **argv)
 #ifdef MPIENV
 	if (myrank == 0) {
 #endif
-	    printf("vr(%p) size(%d)\n", data.vr, vrze_size[0].vsize);
-	    printf("ze(%p) size(%d)\n", data.ze, vrze_size[0].zsize);
+	    printf("vr(%p) size(%d)\n", data.vr, vrzeqc_size[1].vsize);
+	    printf("ze(%p) size(%d)\n", data.ze, vrzeqc_size[1].zsize);
+	    printf("ze(%p) size(%d)\n", data.qc, vrzeqc_size[1].qsize);
 	    printf("%s,%s\n", fname, timefmtbuf);
 	    fflush(stdout);
 #ifdef MPIENV
