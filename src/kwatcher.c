@@ -118,6 +118,7 @@ transfer(char *fname, void **args)
 	fprintf(stderr, "Cannot read file %s\n", fname);
 	return;
     }
+    namebuf[sz] = 0; /* terminating for string */
     /* adding history */
     VMODE {
 	fprintf(stderr, "kwatcher: adding %s\n", namebuf);

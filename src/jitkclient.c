@@ -104,6 +104,7 @@ _jitget(char *place, char *fname, void *data, void *size)
     lckfd = locked_lock(place);
     sz = locked_read(lckfd, fpath, PATH_MAX);
     if (fpath[0] == 0) { /* kwacther daemon might die */
+	fprintf(stderr, "kwatcher daemon might die\n");
 	close(lckfd);
 	return -1;
     }

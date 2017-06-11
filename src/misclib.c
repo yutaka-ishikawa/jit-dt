@@ -421,7 +421,7 @@ regex_init()
 int
 regex_match(char *pattern, char *date, char *type)
 {
-    int		cc;
+    int		cc, len;
     regmatch_t	pmatch[NMATCH];
 
     if ((cc = regexec(&preg, pattern, NMATCH, pmatch, 0)) < 0) {
@@ -431,7 +431,10 @@ regex_match(char *pattern, char *date, char *type)
 	return -1;
     }
     if (cc == REG_NOMATCH) return -1;
-    strncpy(date, &pattern[pmatch[1].rm_so], pmatch[1].rm_eo - pmatch[1].rm_so);
-    strncpy(type, &pattern[pmatch[2].rm_so], pmatch[2].rm_eo - pmatch[2].rm_so);
+    len = pmatch[1].rm_eo - pmatch[1].rm_so;
+    strncpy(date, &pattern[pmatch[1].rm_so], len);
+    len = pmatch[2].rm_eo - pmatch[2].rm_so;
+    strncpy(type, &pattern[pmatch[2].rm_so], len);
+    type[len] = 0; /* terminating for string */
     return 1;
 }

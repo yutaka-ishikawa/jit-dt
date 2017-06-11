@@ -18,16 +18,14 @@ extern char	*jitname(int);
 
 #define FTYPE_VR	0
 #define FTYPE_ZE	1
-#define FTYPE_FLAG	2
+#define FTYPE_QC	2
 /*
  *
  */
 #define FTYPE_VR_ENT	0
 #define FTYPE_ZE_ENT	1
 #define FTYPE_QC_ENT	2
-#define FTYPE_NUM	2
-//#define FTYPE_FLAG_ENT	2
-//#define FTYPE_NUM	3
+#define FTYPE_NUM	3
 #define FTSTR_VR	"vr"
 #define FTSTR_ZE	"ze"
 #define FTSTR_QC	"qcf"
