@@ -37,20 +37,21 @@ KLIB = jitclient.o jitkclient.o inotifylib.o misclib.o regexplib.o
 PKLIB = pjitclient.o jitkclient.o inotifylib.o misclib.o
 LLIB = jitclient.o jitcclient.o inotifylib.o misclib.o regexplib.o
 PLLIB = pjitclient.o jitcclient.o inotifylib.o misclib.o
-CCFLAGS += -O3 -Wall -g -c \
-	-I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0/include/
+CCFLAGS += -O3 -Wall -g -c 
 MPICCFLAGS += -DMPIENV $(CCFLAGS) $(FJCFLAGS)
 LDFLAGS_HTTP_DAEMON = \
 	../libmicrohttpd-0.9.47/src/microhttpd/.libs/libmicrohttpd.a \
 	-L$(HOME)/local/lib -lgcrypt -lgnutls -lpthread -lrt
 ifdef HTTP
    CCFLAGS += -DHTTP
+   CCFLAGS += -I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0/include/
    LDFLAGS_HTTP_PUT = -L/usr/lib64 ../curl-7.46.0/lib/.libs/libcurl.a \
 	-lssl -lcrypto -lz -lrt
+   LDFLAGS_CLIENT = -L/usr/lib64 ../curl-7.46.0/lib/.libs/libcurl.a -lz -lrt
 else
    LDFLAGS_HTTP_PUT =
+   LDFLAGS_CLIENT = 
 endif
-LDFLAGS_CLIENT = -L/usr/lib64 ../curl-7.46.0/lib/.libs/libcurl.a -lz -lrt
 #
 .c.o:
 	$(CC) $(CCFLAGS) -c $< -DDEBUG
