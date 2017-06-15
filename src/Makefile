@@ -10,7 +10,7 @@ CLIENT_CMDS=kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
 	ktestgen.pl ltestgen.pl
-CLIENT_CONF=conf
+CLIENT_CONFS=conf conf-test
 
 HOSTNAME=$(shell hostname)
 MPICC = mpicc
@@ -69,7 +69,7 @@ install_client: client
 	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
 	$(INSTALL) $(CLIENT_CMDS) $(INSTBIN) 
 	[ -d $(INSTETC) ] || mkdir -p $(INSTETC)
-	$(INSTALL) -m 0644 $(CLIENT_CONF) $(INSTETC) 
+	$(INSTALL) -m 0644 $(CLIENT_CONFS) $(INSTETC) 
 install_lib: libs
 	[ -d $(INSTINCL) ] || mkdir -p $(INSTINCL)
 	[ -d $(INSTLIB) ] || mkdir -p $(INSTLIB)
