@@ -5,7 +5,8 @@
 CCFLAGS = -DUSE_LOCKF
 
 .PHONY: all
-SERVER_CMDS=http_daemon http_put watch_and_transfer jit-dt
+SERVER_CMDS=watch_and_transfer jit-dt
+SERVER_CMDS2=http_daemon http_put
 CLIENT_CMDS=kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
@@ -27,8 +28,9 @@ INSTINCL = /opt/nowcast/include
 INSTLIB = /opt/nowcast/lib
 INSTETC = /opt/nowcast/etc
 OBJS =	misclib.o regexplib.o translib.o jitclient.o jitkclient.o jitcclient.o \
-	inotifylib.o watch_and_transfer.o http_put.o http_daemon.o \
+	inotifylib.o watch_and_transfer.o \
 	kwatcher.o  lwatcher.o transtest.o transtest2.o transgen.o
+OBJS2 = http_put.o http_daemon.o
 POBJS =  ptranstest.o ptranstest2.o pjitclient.o
 LIBS = libjitdt-k.a libjitdt-pk.a libjitdt-l.a libjitdt-pl.a
 KLIB = jitclient.o jitkclient.o inotifylib.o misclib.o regexplib.o
@@ -41,8 +43,13 @@ MPICCFLAGS += -DMPIENV $(CCFLAGS) $(FJCFLAGS)
 LDFLAGS_HTTP_DAEMON = \
 	../libmicrohttpd-0.9.47/src/microhttpd/.libs/libmicrohttpd.a \
 	-L$(HOME)/local/lib -lgcrypt -lgnutls -lpthread -lrt
-LDFLAGS_HTTP_PUT = -L/usr/lib64 ../curl-7.46.0/lib/.libs/libcurl.a \
+ifdef HTTP
+   CCFLAGS += -DHTTP
+   LDFLAGS_HTTP_PUT = -L/usr/lib64 ../curl-7.46.0/lib/.libs/libcurl.a \
 	-lssl -lcrypto -lz -lrt
+else
+   LDFLAGS_HTTP_PUT =
+endif
 LDFLAGS_CLIENT = -L/usr/lib64 ../curl-7.46.0/lib/.libs/libcurl.a -lz -lrt
 #
 .c.o:

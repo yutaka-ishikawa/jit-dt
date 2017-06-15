@@ -17,9 +17,12 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <libgen.h>
-#include <curl/curl.h>
+#include <limits.h>
 #include "misclib.h"
 #include "translib.h"
+#ifdef HTTP
+#include <curl/curl.h>
+#endif /* HTTP */
 
 #define F_VERSION_M	10
 
@@ -28,7 +31,14 @@
 #define VMODE	if (flag & TRANS_VERBOSE)
 
 double (*ttable[TRANS_TMAX])(char*, char*, char*, void**) =
-{ http_put, scp_put, sftp_put, locked_move };
+{
+    scp_put,
+    sftp_put,
+    locked_move,
+#ifdef HTTP
+    http_put
+#endif
+};
 
 static int	flag;
 static char	fnbuf[PATH_MAX]; /* temporary use  */
@@ -122,9 +132,7 @@ trans_setflag(int flg)
 int
 trans_type(char *url, char **host, char **rpath)
 {
-    if (parse_url(url, host, rpath, "http:")) {
-	return TRANS_HTTP;
-    } else if (parse_url(url, host, rpath, "scp:")) {
+    if (parse_url(url, host, rpath, "scp:")) {
 	return TRANS_SCP;
     } else if (parse_url(url, host, rpath, "ssh:")) {
 	return TRANS_SCP;
@@ -135,6 +143,11 @@ trans_type(char *url, char **host, char **rpath)
     } else if (index(url, ':')) {
 	return TRANS_UNKNOWN;
     }
+#ifdef HTTP
+    else if (parse_url(url, host, rpath, "http:")) {
+	return TRANS_HTTP;
+    }
+#endif
     return TRANS_NONE;
 }
 
@@ -341,6 +354,7 @@ locked_move(char *host, char *rpath, char *fname, void **opt)
 }
 
 
+#ifdef HTTP
 static size_t
 replyhandler(void *ptr, size_t size, size_t nmemb, void *fp)
 {
@@ -402,3 +416,5 @@ err2:
     LOG_PRINT("Cannot send http request: %s\n", curl_easy_strerror(res));
     return -1;
 }
+
+#endif /* HTTP */

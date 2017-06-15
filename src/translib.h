@@ -13,11 +13,15 @@
 #define TRANS_DEBUG	1
 #define TRANS_VERBOSE	2
 
-#define TRANS_HTTP	0
-#define TRANS_SCP	1
-#define TRANS_SFTP	2
-#define TRANS_LOCK	3
+#define TRANS_SCP	0
+#define TRANS_SFTP	1
+#define TRANS_LOCK	2
+#ifdef HTTP
+#define TRANS_HTTP	3
 #define TRANS_TMAX	4
+#else
+#define TRANS_TMAX	3
+#endif
 #define TRANS_UNKNOWN	-1
 #define TRANS_NONE	-2
 

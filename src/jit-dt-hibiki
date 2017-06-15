@@ -4,11 +4,12 @@ SCRIPT_FILE=~/SSH_AGENT_SCRIPT
 PID_FILE=~/JITDT_PID
 DAEMON=watch_and_transfer
 OPTIONS="sftp:ishikawa@hibiki.aics.riken.jp:/opt/nowcast/data/  \
-    /mnt/latest-kobe/ \
+    /mnt/latest-raw/ \
+    -c /home/yisikawa/nowcast/conf \
     -n /home/yisikawa/nowcast/jitready:/opt/nowcast/bell/ -v -D \
     -f /home/yisikawa/nowcast/JITLOG"
 
-#    -s 2017-0615/15/ 
+#    -s 2017-0615/20/
 
 
 case "$1" in
@@ -20,6 +21,10 @@ case "$1" in
 	echo $SCRIPT >$SCRIPT_FILE
 	shift 1
 	$DAEMON $OPTIONS $* >$PID_FILE
+	if [ "$?" -ne 0 ]; then
+	    echo "KILL ssh-agent"
+	    kill -KILL `sed -e 's/.*pid \(.*\);/\1/' $SCRIPT_FILE`
+	fi
         echo "done"
         ;;
   stop)
