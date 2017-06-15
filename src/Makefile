@@ -87,7 +87,7 @@ http_daemon: http_daemon.o
 	$(CC) -o $@ $^ $(LDFLAGS_HTTP_DAEMON) 
 http_put: http_put.o
 	$(CC) -o $@ $^ $(LDFLAGS_HTTP_PUT) 
-watch_and_transfer: watch_and_transfer.o misclib.o translib.o inotifylib.o
+watch_and_transfer: watch_and_transfer.o misclib.o translib.o inotifylib.o regexplib.o
 	$(CC) -o $@ $^ $(LDFLAGS_HTTP_PUT)
 kwatcher: kwatcher.o libjitdt-k.a
 	$(CC) -o $@ $^ $(LDFLAGS_CLIENT)

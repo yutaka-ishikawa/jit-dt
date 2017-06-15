@@ -1,5 +1,6 @@
 /*
  *	Just In Time Data Transfer
+ *	06/15/2017 selective data transfer defined in the configuration file
  *	07/12/2016 generational log file is turn on
  *	16/08/2016 notification mechanism is genaralized
  *	15/08/2016 Adding locked move function, Yutaka Ishikawa
@@ -22,7 +23,9 @@
 #include "translib.h"
 #include "inotifylib.h"
 #include "misclib.h"
+#include "regexplib.h"
 
+#define DEFAULT_CONFNAME "/home/aics/nowcast/etc/conf"
 #define DBG   if (tflag & TRANS_DEBUG)
 #define VMODE if (tflag & TRANS_VERBOSE)
 
@@ -31,6 +34,7 @@ static int	pid;
 static int	nflag, tflag;
 static int	keep_proc;
 
+static char	confname[PATH_MAX];
 static char	topdir[PATH_MAX];
 static char	startdir[PATH_MAX];
 static char	lntfyfile[PATH_MAX] = "/tmp/ditready";
@@ -88,6 +92,12 @@ transfer(char *fname, void **args)
 	LOG_PRINT("keep(%d) remote_path(%s) local ntfy(%s) remote ntfy(%s)\n",
 		(int) (long long) opt[0], remote_path,
 		(char*) opt[1], (char*) opt[2]);
+    }
+    if (regex_match(fname, 0, 0, 0) < 0) {
+	DBG {
+	    LOG_PRINT("Skipping %s\n", fname);
+	}
+	return;
     }
     VMODE {
 	double	sec;
@@ -149,9 +159,13 @@ main(int argc, char **argv)
     url = argv[1];
     strcpy(topdir, (argc < 3) ? PATH_WATCH : argv[2]);
     fformat(topdir);
+    strcpy(confname, DEFAULT_CONFNAME);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:")) != -1) {
+	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:c:")) != -1) {
 	    switch (opt) {
+	    case 'c': /* configuration file */
+		strcpy(confname, optarg);
+		break;
 	    case 'D': /* daemonize */
 		dmflag = 1;
 		break;
@@ -203,6 +217,7 @@ main(int argc, char **argv)
 	    }
 	}
     }
+    regex_init(confname);
     if (dmflag == 1) {
 	pid = mydaemonize(lognmbase);
     }
