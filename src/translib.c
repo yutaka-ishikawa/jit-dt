@@ -263,7 +263,9 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     if (cc < 0) goto die_return;
     /* notification */
     if (lntfy) {
-	sprintf(combuf, "echo -n %s > %s\n", fnbuf, lntfy);
+	char	*base;
+	base = basename(fnbuf);
+	sprintf(combuf, "echo -n %s > %s\n", base, lntfy);
 	cc = system(combuf);
 	if (cc < 0) goto err_return;
 	sprintf(combuf, "%s%d", rntfy, *vrsnp);

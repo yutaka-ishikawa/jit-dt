@@ -150,7 +150,7 @@ main(int argc, char **argv)
     strcpy(topdir, (argc < 3) ? PATH_WATCH : argv[2]);
     fformat(topdir);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "Ddkp:vs:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:")) != -1) {
 	    switch (opt) {
 	    case 'D': /* daemonize */
 		dmflag = 1;

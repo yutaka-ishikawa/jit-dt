@@ -1,8 +1,9 @@
 #!/usr/bin/perl -w
 #
 # Ex.
-#    ./ktestgen.pl ../testdata/JITDTLOG.20170510 ../testdata/data.tar \
-#		    /tmp/bell/ /tmp/ 2 10 4
+#    ./ktestgen.pl /opt/nowcast/testdata/JITDTLOG.20170510 \
+#		   /opt/nowcast/testdata/data.tar \
+#		   /opt/nowcast/bell/ /opt/nowcast/data/ 2 4 4
 #   In this case,
 #     something like the following commands are executed each interval time:
 #	cd /tmp/;
@@ -75,6 +76,7 @@ $SIG{ALRM} = sub {
 	}
 	# belling to kwatcher
 	open(OUT, "> $bellpath");
+##	printf OUT "$dir$fname";
 	printf OUT "$fname";
 	close(OUT);
     }
