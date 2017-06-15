@@ -1,0 +1,13 @@
+#
+# This configuration is for Fukita PAWR
+#	20150806-140030.all.010000000.dat
+#	20150806-140030.all.020000000.dat
+#	20150806-140030.all_pawr_qcf.dat
+
+region osaka {
+    pattern = ".*all.02000000.dat";
+}
+
+region osaka {
+    pattern = ".*all_pawr_qcf.dat";
+}
