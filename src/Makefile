@@ -3,10 +3,11 @@
 # For Hibiki, -DUSE_LOCKF must be removed
 #
 CCFLAGS = -DUSE_LOCKF
-INSTTOP = /opt/nowcast
+#INSTTOP = /opt/nowcast
+INSTTOP = $(HOME)
 
 .PHONY: all
-SERVER_CMDS=watch_and_transfer jit-dt
+SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki
 SERVER_CMDS2=http_daemon http_put
 CLIENT_CMDS=kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
