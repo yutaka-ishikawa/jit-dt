@@ -3,6 +3,7 @@
 # For Hibiki, -DUSE_LOCKF must be removed
 #
 CCFLAGS = -DUSE_LOCKF
+INSTTOP = /opt/nowcast
 
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt
@@ -22,11 +23,10 @@ ifeq (fe01, $(findstring fe01, $(HOSTNAME)))
 endif
 CC = gcc
 INSTALL = install
-#INSTBIN = $(HOME)/bin
-INSTBIN = /opt/nowcast/bin
-INSTINCL = /opt/nowcast/include
-INSTLIB = /opt/nowcast/lib
-INSTETC = /opt/nowcast/etc
+INSTBIN = $(INSTTOP)/bin
+INSTINCL = $(INSTTOP)/include
+INSTLIB =  $(INSTTOP)/lib
+INSTETC =  $(INSTTOP)/etc
 OBJS =	misclib.o regexplib.o translib.o jitclient.o jitkclient.o jitcclient.o \
 	inotifylib.o watch_and_transfer.o \
 	kwatcher.o  lwatcher.o transtest.o transtest2.o transgen.o
