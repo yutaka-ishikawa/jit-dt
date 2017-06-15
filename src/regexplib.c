@@ -223,9 +223,7 @@ regex_init(char *cfnm)
     int		i, cc;
 
     readconf(cfnm);
-    printf("confent = %d\n", confent);
     for (i = 0; i < confent; i++) {
-	printf("pattern=%s\n", conf[i].c_pattern);
 	if ((cc = regcomp(&conf[i].c_preg, conf[i].c_pattern, 0)) < 0) {
 	    fprintf(stderr, "regexinit: compile error: %s\n",
 		    conf[i].c_pattern);
@@ -234,9 +232,11 @@ regex_init(char *cfnm)
 	    exit(-1);
 	}
     }
+#if 0
     for (i = 0; i < syncent; i++) {
 	printf("synctype=%s\n", synctype[i]);
     }
+#endif
 }
 
 void
