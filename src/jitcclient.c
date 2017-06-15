@@ -121,7 +121,22 @@ netsendreq(int sock, int cmd, int opt1, int opt2, int op3)
     if (cmd >= CMD_MAX) return -1;
     memset(&tcmd, 0, sizeof(struct trans_cmd));
     strcpy(tcmd.cmd, strcmd[cmd]);
-    tcmd.opt1 = opt1; tcmd.opt2 = opt2; tcmd.opt3 = op3;
+    tcmd.opt[0] = opt1; tcmd.opt[1] = opt2; tcmd.opt[2] = op3;
+    tcmd.len = 0;
+    cc = netwrite(sock, (char*) &tcmd, sizeof(tcmd));
+    return cc;
+}
+
+int
+netsendreq2(int sock, int cmd, int *opts, int sz)
+{
+    int			i, cc;
+    struct trans_cmd	tcmd;
+
+    if (cmd >= CMD_MAX) return -1;
+    memset(&tcmd, 0, sizeof(struct trans_cmd));
+    strcpy(tcmd.cmd, strcmd[cmd]);
+    for (i = 0; i < sz; i++) tcmd.opt[i] = opts[i];
     tcmd.len = 0;
     cc = netwrite(sock, (char*) &tcmd, sizeof(tcmd));
     return cc;
@@ -149,7 +164,7 @@ trans_replyopen(int sock, char *fpath, int rcc)
     struct trans_cmd	tcmd;
 
     strcpy(tcmd.cmd, strcmd[CMD_REPLY]);
-    tcmd.opt1 = rcc;
+    tcmd.opt[0] = rcc;
     if (fpath == NULL) {
 	tcmd.len = 0;
     } else {
@@ -180,11 +195,11 @@ trans_replyread(int sock, char *buf, int size)
 int
 trans_replyget(int sock, unsigned long long date, char *fname, char *buf, int totsz, int *retval)
 {
-    int			cc;
+    int			i, cc;
     struct trans_cmd	tcmd;
 
     strcpy(tcmd.cmd, strcmd[CMD_REPLY]);
-    tcmd.opt1 = retval[0];  tcmd.opt2 = retval[1]; tcmd.opt3 = retval[2];
+    for (i = 0; i < TRANSOPT_SIZE; i++) tcmd.opt[i] = retval[i];
     tcmd.date = date;
     tcmd.len = totsz;
     strncpy(tcmd.str, fname, SCMD_STRSIZ - 1);
@@ -197,7 +212,7 @@ trans_replyget(int sock, unsigned long long date, char *fname, char *buf, int to
 
 
 int
-trans_getcmd(int sock, int *opt1, int *opt2, int *opt3)
+trans_getcmd(int sock, int *opt)
 {
     int		i, len;
     struct trans_cmd	tcmd;
@@ -206,7 +221,7 @@ trans_getcmd(int sock, int *opt1, int *opt2, int *opt3)
 	printf("trans_getcmd: %d\n", len);
 	return CMD_EXIT;
     }
-    *opt1 = tcmd.opt1; *opt2 = tcmd.opt2; *opt3 = tcmd.opt3;
+    for (i = 0; i < TRANSOPT_SIZE; i++) opt[i] = tcmd.opt[i];
     for (i = CMD_OPEN; i < CMD_MAX; i++) {
 	if (!strncmp(tcmd.cmd, strcmd[i], CMD_SIZE)) return i;
     }
@@ -228,7 +243,7 @@ _jitopen(char *host, char *fname, int type)
     if ((cc = netrecvreply(sock, &reply)) < 0) {
 	return -1;
     }
-    if (reply->opt1 < 0) {
+    if (reply->opt[0] < 0) {
 	fname[0] = 0;
 	close(sock);
 	free(reply);
@@ -271,29 +286,25 @@ _jitread(int sock, void *buf, size_t size)
 
 
 int
-_jitget(char *host, char *fname, void *data, void *size)
+_jitget(char *host, char *fname, void *data, int *size, int ent)
 {
     int		sock;
     int		ptr, i;
-    obs_size	*szp = (obs_size*) size;
-    int		*bsize, *rsize;
-    int			cc;
+    int		cc;
     struct trans_cmd	tcmd;
 
-    bsize = szp->elem;  rsize = (szp + 1)->elem;
     sock = netopen(host);
-    /* FTYPE_NUM is 2 */
-    if ((cc = netsendreq(sock, CMD_GET, bsize[0], bsize[1], 0)) < 0) {
-	return -1;
-    }
+    /* upto three entries */
+    ent = ent > TRANSOPT_SIZE ? TRANSOPT_SIZE : ent;
+    if ((cc = netsendreq2(sock, CMD_GET, size, ent)) < 0) return -1;
     if ((cc = netread(sock, (char*) &tcmd, TCMD_SIZE)) <= 0) {
 	return CMD_EXIT;
     }
     strncpy(fname, tcmd.str, SCMD_STRSIZ - 1);
-    rsize[0] = tcmd.opt1; rsize[1] = tcmd.opt2;
-    for (ptr = 0, i = 0; i < FTYPE_NUM; i++) {
-	netread(sock, ((char*)data) + ptr, rsize[i]);
-	ptr += bsize[i];
+    for (ptr = 0, i = 0; i < ent; i++) {
+	netread(sock, ((char*)data) + ptr, tcmd.opt[i]);
+	ptr += size[i];		/* next entry */
+	size[i] = tcmd.opt[i];	/* read size */
     }
     close(sock);
     return 0;

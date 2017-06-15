@@ -14,6 +14,7 @@
 
 #define ITER		10
 #define BUFSIZE		(40*1024*1024)
+#define NUM_ENTRIES	2
 #define DBUF_SIZE	128
 
 #ifdef MPIENV
@@ -25,25 +26,19 @@ static char	timebuf[DBUF_SIZE];
 static char	timefmtbuf[DBUF_SIZE];
 static char	place[PATH_MAX+1];
 
-struct vrze {
-    char	vr[BUFSIZE];
-    char	ze[BUFSIZE];
-    char	qc[BUFSIZE];
+struct data {
+    char	d1[BUFSIZE];	/* 1st entry of the sync decl in conf */
+    char	d2[BUFSIZE];	/* 2nd entry of the sync decl in conf */
 } data;
 /*
- * vrzeqc_size[0] : IN  buffer sizes
- * vrzeqc_size[1] : OUT read sizes
+ * size : IN  buffer sizes, OUT read sizes
  */
-struct vrze_size {
-    int		vsize;
-    int		zsize;
-    int		qsize;
-} vrzeqc_size[2];
+int	sizes[NUM_ENTRIES];
 
 int
 main(int argc, char **argv)
 {
-    int		i, iter;
+    int		i, j, iter;
     struct timeval	time;
     struct timezone	tzone;
 
@@ -67,12 +62,10 @@ main(int argc, char **argv)
 	printf("Tanstest: nprocs(%d)\n", nprocs);
     }
 #endif
-    vrzeqc_size[0].vsize
-	= vrzeqc_size[0].zsize
-	= vrzeqc_size[0].qsize = BUFSIZE;
+    for (i = 0; i < NUM_ENTRIES; i++) sizes[i] = BUFSIZE;
     for (i = 0; i < iter; i++) {
 	memset(timebuf, 0, DBUF_SIZE);
-	if (jitget(place, fname, &data, &vrzeqc_size) < 0) {
+	if (jitget(place, fname, &data, sizes, NUM_ENTRIES) < 0) {
 	    printf("Cannot get a file\n");
 	    continue;
 	}
@@ -81,10 +74,10 @@ main(int argc, char **argv)
 #ifdef MPIENV
 	if (myrank == 0) {
 #endif
-	    printf("vr(%p) size(%d)\n", data.vr, vrzeqc_size[1].vsize);
-	    printf("ze(%p) size(%d)\n", data.ze, vrzeqc_size[1].zsize);
-	    printf("qc(%p) size(%d)\n", data.qc, vrzeqc_size[1].qsize);
-	    printf("%s,%s\n", fname, timefmtbuf);
+	    printf("%s=> %s\n", timefmtbuf, fname);
+	    for (j = 0; j < NUM_ENTRIES; j++) {
+		printf("\tdata%d size(%d)\n", j, sizes[i]);
+	    }
 	    fflush(stdout);
 #ifdef MPIENV
 	}

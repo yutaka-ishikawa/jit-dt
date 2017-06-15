@@ -6,14 +6,10 @@
 #define LCK_FILE_1	"JITDT-READY-1"
 #define LCK_FILE_2	"JITDT-READY-2"
 
-typedef struct obs_size {
-    int		elem[3];
-} obs_size;
-
 extern int	jitopen(char*, char*, int type);
 extern int	jitclose(int);
 extern int	jitread(int, void*, size_t);
-extern int	jitget(char*, char*, void*, void*);
+extern int	jitget(char*, char*, void *data, int *sizes, int entries);
 extern char	*jitname(int);
 
 #define FTYPE_VR	0
@@ -53,6 +49,9 @@ septype(char *str, char **files)
 	    files[i] = next;
 	    *cp = 0;
 	    next = cp + 1;
+	} else {
+	    files[i] = 0;
+	    break;
 	}
     }
     return;

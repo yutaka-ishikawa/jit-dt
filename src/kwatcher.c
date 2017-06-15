@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "misclib.h"
+#include "regexplib.h"
 #include "translib.h"
 #include "inotifylib.h"
 #include "jitclient.h"
@@ -15,13 +16,16 @@
 //#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
 //#define MAX_HISTORY	(2*10)
 #define MAX_HISTORY	(5)
+#define DEFAULT_CONFNAME "/opt/nowcast/etc/conf"
 
 #define DBG if (nflag&MYNOTIFY_DEBUG)
 #define VMODE if (nflag & TRANS_VERBOSE)
 
 static char	lognmbase[PATH_MAX] = "./KWATCHLOG";
+static char	confname[PATH_MAX];
 static char	indir[PATH_MAX], outdir[PATH_MAX];
 static char	namebuf[PATH_MAX], lockedf[PATH_MAX*3+3];
+static char	oldname[PATH_MAX], newname[PATH_MAX];
 static int	nflag = 0;
 static char	flags[1024];
 static histdata	history[MAX_HISTORY];
@@ -48,26 +52,43 @@ dirnmcpy(char *dst, char *src)
 }
 
 histdata *
-mkhist(char *path)
+mkhist(char *path, int *entsize)
 {
-    static char	date[128], type[128];
-    int		i, tp;
+    static char	date[128], type[128], fnam[128];
+    int		i, entpoint, entries;
     long long	dt;
     char	*cp;
 
-    if (regex_match(path, date, type) < 0) {
+    if (regex_match(path, date, type, fnam) < 0) {
 	fprintf(stderr, "Cannot parse the file name (%s). skipping\n", path);
 	return NULL;
     }
     dt = atoll(date);
-    tp = asc2ent(type);
-    if ((cp = malloc(strlen(path) + 1)) == NULL) {
+    fprintf(stderr, "kwatcher: date %lld\n", dt);
+    if ((entpoint = sync_entry(type)) < 0) {
+	fprintf(stderr, "Not expected data for synchronization: %s\n",
+		fnam);
+	return NULL;
+    }
+    if ((cp = malloc(strlen(fnam) + 1)) == NULL) {
 	fprintf(stderr, "mkhist:Cannot reserve memory\n"); exit(-1);
     }
-    strcpy(cp, path);
+    strcpy(cp, fnam);
+    strcpy(oldname, outdir); strcat(oldname, path);
+    strcpy(newname, outdir); strcat(newname, cp);
+    if (rename(oldname, newname) != 0) {
+	fprintf(stderr, "Cannot rename (%s, %s)\n", oldname, newname);
+	return NULL;
+    }
+    entries = sync_nsize();
+    *entsize = entries;
     if (dt == history[curhistp].date) {
-	history[curhistp].fname[tp] = cp;
-	for (i = 0; i < FTYPE_NUM; i++) {
+	if (history[curhistp].fname[entpoint] != 0) {
+	    fprintf(stderr, "Multiple receive type: %s\n", type);
+	    return NULL;
+	}
+	history[curhistp].fname[entpoint] = cp;
+	for (i = 0; i < entries; i++) {
 	    if (history[curhistp].fname[i] == 0) goto nofilled;
 	}
 	/* all filled */
@@ -80,7 +101,7 @@ mkhist(char *path)
 		fprintf(stderr, "kwatcher: removing %lld\n",
 			history[curhistp].date);
 	    }
-	    for (i = 0; i < FTYPE_NUM; i++) {
+	    for (i = 0; i < entries; i++) {
 		char	*tcp;
 		if ((tcp = history[curhistp].fname[i])) {
 		    unlink(tcp);
@@ -90,7 +111,7 @@ mkhist(char *path)
 	    }
 	}
 	history[curhistp].date = dt;
-	history[curhistp].fname[tp] = cp;
+	history[curhistp].fname[entpoint] = cp;
     }
 nofilled:
     return NULL;
@@ -101,7 +122,7 @@ transfer(char *fname, void **args)
 {
     char	*outdir;
     histdata	*files;
-    int		i, fd, lckfd, newlckfd;
+    int		i, fd, lckfd, newlckfd, entries;
     ssize_t	sz;
 
     outdir = (char*) args[0];
@@ -123,12 +144,12 @@ transfer(char *fname, void **args)
     VMODE {
 	fprintf(stderr, "kwatcher: adding %s\n", namebuf);
     }
-    if ((files = mkhist(namebuf)) == NULL) return;
+    if ((files = mkhist(namebuf, &entries)) == NULL) return;
     VMODE {
 	fprintf(stderr, "kwatcher: available %lld\n", files->date);
     }
     lockedf[0] = 0;
-    for (i = 0; i < FTYPE_NUM; i++) {
+    for (i = 0; i < entries; i++) {
 	strcat(lockedf, files->fname[i]); strcat(lockedf, FTSTR_SEPARATOR); 
     }
     locked_write(lckfd, lockedf);
@@ -156,9 +177,13 @@ main(int argc, char **argv)
 	return -1;
     }
     curhistp = 0; nhist = MAX_HISTORY;
+    strcpy(confname, DEFAULT_CONFNAME);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "dDvh:")) != -1) {
+	while ((opt = getopt(argc, argv, "c:dDvh:")) != -1) {
 	    switch (opt) {
+	    case 'c': /* conf */
+		strcpy(confname, optarg);
+		break;
 	    case 'd': /* debug mode */
 		nflag |= MYNOTIFY_DEBUG;
 		strcat(flags, "-d ");
@@ -180,7 +205,7 @@ main(int argc, char **argv)
     if (dmflag == 1) {
 	pid = mydaemonize(lognmbase);
     }
-    regex_init();
+    regex_init(confname);
     dirnmcpy(indir, argv[optind]);
     dirnmcpy(outdir, argv[optind+1]);
     showsettings();

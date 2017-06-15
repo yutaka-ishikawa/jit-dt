@@ -13,11 +13,12 @@
 #include <netdb.h>
 #include <string.h>
 #include "jitclient.h"
+#include "jitcclient.h"
 
 extern int	_jitopen(char*, char*, int type);
 extern int	_jitclose(int);
 extern int	_jitread(int, void*, size_t);
-extern int	_jitget(char*, char*, void*, void*);
+extern int	_jitget(char*, char*, void*, int*, int);
 
 #ifdef MPIENV
 #define ROOT		0
@@ -87,32 +88,35 @@ jitread(int sock, void *buf, size_t size)
 }
 
 int
-jitget(char *place, char *fname, void *data, void *size)
+jitget(char *place, char *fname, void *data, int *bsize, int entries)
 {
     int		cc;
 #ifdef MPIENV
-    int		i, *bsize, *rsize, ptr;
-    obs_size	*szp = (obs_size*) size;
+    int		i, ptr;
+    int		rsize[TRANSOPT_SIZE];
 
+    if (entries > TRANSOPT_SIZE) {
+	fprintf(stderr, "Too many data entries. must be smaller than %d\n",
+		TRANSOPT_SIZE);
+	return -1;
+    }
     if (is_myrank() == ROOT) {
-	cc = _jitget(place, fname, data, size);
+	memcpy(rsize, bsize, sizeof(int)*entries);
+	cc = _jitget(place, fname, data, rsize, entries);
     }
     MPI_Bcast(&cc, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
-    bsize = szp->elem; rsize = (szp + 1)->elem;
-    MPI_Bcast(rsize, sizeof(obs_size), MPI_BYTE, ROOT, MPI_COMM_WORLD);
+    MPI_Bcast(rsize, entries, MPI_INT, ROOT, MPI_COMM_WORLD);
     ptr = 0;
-    for (i = 0; i < FTYPE_NUM; i++) {
+    for (i = 0; i < entries; i++) {
 	if (rsize[i] > 0) {
 	    MPI_Bcast(((char*)data) + ptr, rsize[i], MPI_BYTE,
 		      ROOT, MPI_COMM_WORLD);
-	    ptr += bsize[i];
+	    ptr += bsize[i];	 /* next data area */
+	    bsize[i] = rsize[i]; /* read size */
 	} 
     }
-//    if (cc > 0) {
-//	MPI_Bcast(buf, sz, MPI_BYTE, ROOT, MPI_COMM_WORLD);
-//    }
 #else
-    cc = _jitget(place, fname, data, size);
+    cc = _jitget(place, fname, data, bsize, entries);
 #endif
     //printf("jitread: size(%d)\n", sz);
     return cc;

@@ -13,6 +13,7 @@
 #include <libgen.h>
 #include <pthread.h>
 #include "misclib.h"
+#include "regexplib.h"
 #include "translib.h"
 #include "inotifylib.h"
 #include "jitclient.h"
@@ -24,8 +25,10 @@
 #define MAX_HISTORY	(2*10)
 //#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
 #define SSIZE	1024
+#define DEFAULT_CONFNAME "/opt/nowcast/etc/conf"
 
 static char	lognmbase[PATH_MAX] = "./LWATCHLOG";
+static char	confname[PATH_MAX];
 static char	indir[PATH_MAX];
 static char	flags[1024];
 static int	nflag = 0;
@@ -91,12 +94,12 @@ watcher(char *fname, void **args)
     VMODE {
 	fprintf(stderr, "%s arrives\n", fname); fflush(stderr);
     }
-    if (regex_match(fname, date, type) < 0) {
+    if (regex_match(fname, date, type, 0) < 0) {
 	fprintf(stderr, "Cannot parse the file name. skipping\n");
 	return;
     }
     dt = atoll(date);
-    tp = asc2ent(type);
+    tp = sync_entry(type);
     histput(fname, dt, tp);
 }
 
@@ -107,7 +110,9 @@ transfer(void *param)
     void		**args = (void**) param;
     struct sockaddr_in	*saddrp;
     int			acsock;
+    int			nsize;
 
+    nsize = sync_nsize();
     saddrp = (struct sockaddr_in *) args[0];
     acsock = (long long) args[1];
     showsettings(*saddrp);
@@ -116,7 +121,8 @@ transfer(void *param)
      */
     for (;;) {
 	socklen_t	addrlen;
-	int		cmd, opt[3], retval[3], totsz, sz, i;
+	int		cmd, opt[TRANSOPT_SIZE], retval[TRANSOPT_SIZE];
+	int		totsz, sz, i;
 	char		tmpstr[SCMD_STRSIZ];
 	histdata	*hp;
 	char		*fname = 0, *cp;
@@ -134,7 +140,7 @@ transfer(void *param)
 	    DBG {
 		fprintf(stderr, "Waiting for command\n"); fflush(stderr);
 	    }
-	    cmd = trans_getcmd(sock, &opt[0], &opt[1], &opt[2]);
+	    cmd = trans_getcmd(sock, opt);
 	    DBG {
 		printf("cmd = %d opt1(%d) opt2(%d) opt3(%d)\n",
 		       cmd, opt[0], opt[1], opt[2]);
@@ -168,7 +174,7 @@ transfer(void *param)
 		hp = histget();
 		/* checking if all types arrive */
 	    retry_get:
-		for (i = 0; i < FTYPE_NUM; i++) {
+		for (i = 0; i < nsize; i++) {
 		    if (hp->fname[i] == NULL) {
 			histwait();
 			goto retry_get;
@@ -178,7 +184,12 @@ transfer(void *param)
 		    fprintf(stderr, "%lld is sent to the client\n",
 			    hp->date); fflush(stderr);
 		}
-		for (totsz = 0, i = 0; i < 3; i++) {
+		for (totsz = 0, i = 0; i < nsize; i++) {
+		    if (opt[i] == 0) {
+			/* request is smaller number of files */
+			nsize = i;
+			break;
+		    }
 		    totsz += opt[i];
 		}
 		if ((cp = (char*) malloc(totsz)) == NULL) {
@@ -186,7 +197,12 @@ transfer(void *param)
 		    exit(-1);
 		}
 		tmpstr[0] = 0;
-		for (totsz = 0, i = 0; i < FTYPE_NUM; i++) {
+		for (totsz = 0, i = 0; i < nsize; i++) {
+		    if (hp->fname[i] == 0) {
+			/* the number handling files is smaller than
+			 * request files */
+			break;
+		    }
 		    if ((tfd = open(hp->fname[i], O_RDONLY)) > 0) {
 			strcat(tmpstr, hp->fname[i]);
 			strcat(tmpstr, FTSTR_SEPARATOR);
@@ -253,10 +269,14 @@ main(int argc, char **argv)
 	return -1;
     }
     nhist = MAX_HISTORY;
+    strcpy(confname, DEFAULT_CONFNAME);
     strcpy(hostname, HOST_DEFAULT);
     if (argc > 2) {
-	while ((opt = getopt(argc, argv, "dDvh:H:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "c:dDvh:H:p:")) != -1) {
 	    switch (opt) {
+	    case 'c': /* conf */
+		strcpy(confname, optarg);
+		break;
 	    case 'd': /* debug mode */
 		nflag |= MYNOTIFY_DEBUG;
 		strcat(flags, " -d");
@@ -285,7 +305,7 @@ main(int argc, char **argv)
     if (dmflag == 1) {
 	pid = mydaemonize(lognmbase);
     }
-    regex_init(); histinit(nhist);
+    regex_init(confname); histinit(nhist);
     dirnmcpy(indir, argv[optind]);
     t_args[0] = (void*) &saddr;
     t_args[1] = (void*) (long long) sock;

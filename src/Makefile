@@ -10,6 +10,7 @@ CLIENT_CMDS=kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
 	ktestgen.pl ltestgen.pl
+CLIENT_CONF=conf
 
 HOSTNAME=$(shell hostname)
 MPICC = mpicc
@@ -24,14 +25,15 @@ INSTALL = install
 INSTBIN = /opt/nowcast/bin
 INSTINCL = /opt/nowcast/include
 INSTLIB = /opt/nowcast/lib
-OBJS =	misclib.o translib.o jitclient.o jitkclient.o jitcclient.o \
+INSTETC = /opt/nowcast/etc
+OBJS =	misclib.o regexplib.o translib.o jitclient.o jitkclient.o jitcclient.o \
 	inotifylib.o watch_and_transfer.o http_put.o http_daemon.o \
 	kwatcher.o  lwatcher.o transtest.o transtest2.o transgen.o
 POBJS =  ptranstest.o ptranstest2.o pjitclient.o
 LIBS = libjitdt-k.a libjitdt-pk.a libjitdt-l.a libjitdt-pl.a
-KLIB = jitclient.o jitkclient.o inotifylib.o misclib.o
+KLIB = jitclient.o jitkclient.o inotifylib.o misclib.o regexplib.o
 PKLIB = pjitclient.o jitkclient.o inotifylib.o misclib.o
-LLIB = jitclient.o jitcclient.o inotifylib.o misclib.o
+LLIB = jitclient.o jitcclient.o inotifylib.o misclib.o regexplib.o
 PLLIB = pjitclient.o jitcclient.o inotifylib.o misclib.o
 CCFLAGS += -O3 -Wall -g -c \
 	-I../libmicrohttpd-0.9.47/src/include -I../curl-7.46.0/include/
@@ -66,6 +68,8 @@ install_server: server
 install_client: client
 	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
 	$(INSTALL) $(CLIENT_CMDS) $(INSTBIN) 
+	[ -d $(INSTETC) ] || mkdir -p $(INSTETC)
+	$(INSTALL) -m 0644 $(CLIENT_CONF) $(INSTETC) 
 install_lib: libs
 	[ -d $(INSTINCL) ] || mkdir -p $(INSTINCL)
 	[ -d $(INSTLIB) ] || mkdir -p $(INSTLIB)

@@ -23,9 +23,10 @@
 #define SCMD_REPLY	"REPL"
 #define SCMD_STRSIZ	256	/* The current finame string size is 95 */
 
+#define TRANSOPT_SIZE	3
 struct trans_cmd {
     char	cmd[CMD_SIZE+1];
-    int		opt1, opt2, opt3, opt4;
+    int		opt[TRANSOPT_SIZE];
     long long	date;
     char	str[SCMD_STRSIZ];
     int		len;
@@ -38,7 +39,7 @@ struct trans_openrpl {
 };
 
 extern int	setupinet(struct sockaddr_in *saddrp, char *host, int port);
-extern int	trans_getcmd(int sock, int *, int *, int *);
+extern int	trans_getcmd(int sock, int *);
 extern int	trans_replyopen(int sock, char *fpath, int rcc);
 extern int	trans_replyread(int sock, char *buf, int size);
 extern int	trans_replyget(int sock, unsigned long long,

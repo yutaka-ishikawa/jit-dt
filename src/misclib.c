@@ -400,6 +400,7 @@ locked_read(int lckfd, char *buf, int size)
     return cc;
 }
 
+#if 0
 #define NMATCH	4	/* all string, date, type, and terminate */
 //static char	*regex = "kobe_\\(.*\\)_A08_pawr_\\(.*\\).dat";
 static char	*regex = ".*_\\(.*\\)_A08_pawr_\\(.*\\).dat";
@@ -438,3 +439,4 @@ regex_match(char *pattern, char *date, char *type)
     type[len] = 0; /* terminating for string */
     return 1;
 }
+#endif

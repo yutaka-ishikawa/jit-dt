@@ -92,14 +92,12 @@ _jitread(int fd, void *buf, size_t size)
 }
 
 int
-_jitget(char *place, char *fname, void *data, void *size)
+_jitget(char *place, char *fname, void *data, int *bsize, int ent)
 {
     int		lckfd, fd;
     int		i, sz, ptr;
     char	*files[FTYPE_NUM+1];
     char	curname[PATH_MAX];
-    obs_size	*szp = (obs_size*) size;
-    int		*bsize, *rsize;
 
     lckfd = locked_lock(place);
     sz = locked_read(lckfd, fpath, PATH_MAX);
@@ -110,9 +108,9 @@ _jitget(char *place, char *fname, void *data, void *size)
     }
     fpath[sz] = 0;
     septype(fpath, files);
-    bsize = szp->elem; rsize = (szp + 1)->elem;
     fname[0] = 0;
-    for (ptr = 0, i = 0; i < FTYPE_NUM; i++) {
+    for (ptr = 0, i = 0; i < ent; i++) {
+	if (files[i] == 0) break;
 	strcat(fname, files[i]);
 	strcat(fname, FTSTR_SEPARATOR);
 	strcpy(curname, place);
@@ -124,8 +122,8 @@ _jitget(char *place, char *fname, void *data, void *size)
 	    sz = read(fd, ((char*)data) + ptr, bsize[i]);
 	    close(fd);
 	}
-	rsize[i] = sz;
-	ptr += bsize[i];
+	ptr += bsize[i]; /* next entry */
+	bsize[i] = sz; /* read size */
     }
     /* removing separator */
     fname[strlen(fname) - 1] = 0;
