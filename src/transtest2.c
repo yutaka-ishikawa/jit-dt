@@ -76,7 +76,7 @@ main(int argc, char **argv)
 #endif
 	    printf("%s=> %s\n", timefmtbuf, fname);
 	    for (j = 0; j < NUM_ENTRIES; j++) {
-		printf("\tdata%d size(%d)\n", j, sizes[i]);
+		printf("\tdata%d size(%d)\n", j, sizes[j]);
 	    }
 	    fflush(stdout);
 #ifdef MPIENV

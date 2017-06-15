@@ -3,6 +3,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+/*
+ * 20150806-140030.all.10000000.dat
+ * 20150806-140030.all.20000000.dat
+ * 20150806-140030.all_pawr_qcf.dat
+ * kobe_20161209171230_A08_pawr_ze.dat
+ */
 char	errbuf[1024];
 char	*tpattern[] = {
     "/home/ishikawa/tmp/tmp/kobe_20161208110200_A08_pawr_vr.dat",

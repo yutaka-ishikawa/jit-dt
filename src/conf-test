@@ -1,0 +1,41 @@
+#
+# Kobe
+#	kobe_20161209171230_A08_pawr_ze.dat
+# Osaka
+#	20150806-140030.all.10000000.dat
+#	20150806-140030.all.20000000.dat
+#	20150806-140030.all_pawr_qcf.dat
+
+region kobe {
+    pattern = ".*_\\(.*\\)_A08_pawr_\\(.*\\).dat";
+    date = "$1";
+    type = "$2";
+    fname = "kobe_$1_$2.dat";
+}
+
+region osaka {
+    pattern = "\\([0-9].*\\)-\\([0-9].*\\).all.1\\([0-9].*\\).dat";
+    date = "$1$2";
+    type = "ze";
+    fname = "osaka_$1$2_ze.dat";
+}
+
+region osaka {
+    pattern = "\\([0-9].*\\)-\\([0-9].*\\).all.2\\([0-9].*\\).dat";
+    date = "$1$2";
+    type = "vr";
+    fname = "osaka_$1$2_vr.dat";
+}
+
+region osaka {
+    pattern = "\\([0-9].*\\)-\\([0-9].*\\).all_pawr_qcf.dat";
+    date = "$1$2";
+    type = "qcf";
+    fname = "osaka_$1$2_qcf.dat";
+}
+
+sync {
+     type = "vr";
+##     type = "ze";
+     type = "qcf";
+}

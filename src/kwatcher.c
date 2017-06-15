@@ -173,6 +173,7 @@ main(int argc, char **argv)
 
     if (argc < 3) {
 	fprintf(stderr, "usage: %s <watching directory> <data directory> "
+		"[-c <conf. file>] "
 		"[-h history count] [-d] [-v]\n", argv[0]);
 	return -1;
     }

@@ -2,7 +2,7 @@
 #
 # Ex.
 #    ./ktestgen.pl ../testdata/JITDTLOG.20170510 ../testdata/data.tar \
-#		    /tmp/bell/ /tmp/ 2
+#		    /tmp/bell/ /tmp/ 2 10 4
 #   In this case,
 #     something like the following commands are executed each interval time:
 #	cd /tmp/;
@@ -16,7 +16,7 @@ use Time::HiRes qw(setitimer ITIMER_REAL);
 if (@ARGV < 3) {
     die("ktestgen.pl <log file> <tar file> " .
 		    "<watching directory> <out directory>" .
-	            "[inteval] [count] \n");
+	            "<# types> [inteval] [count] \n");
 }
 open(INPUT, $ARGV[0]) or die("Can't open file: $ARGV[0]");
 $cwd = Cwd::getcwd();
@@ -27,17 +27,22 @@ if ($targzfile !~ "^/" && $targzfile !~ "^~") {
 $bellpath = $ARGV[2] . "/bell";
 $dir = $ARGV[3];
 if (@ARGV >= 5) {
-    $watch_interval = int($ARGV[4]);
+    $nfiles =  int($ARGV[4]);
+} else{
+    $nfiles = 2;
+}
+if (@ARGV >= 6) {
+    $watch_interval = int($ARGV[5]);
 } else {
     $watch_interval = 30;
 }
 $first_sleep = 1;
 $count = -1;
-if (@ARGV == 6) {
-    $count = int($ARGV[5]);
+if (@ARGV == 7) {
+    $count = int($ARGV[6]);
 }
 $retval = 0;
-printf("Interval: %d sec, Count: %d\n", $watch_interval, $count);
+printf("#Types: %d, Interval: %d sec, Count: %d\n", $nfiles, $watch_interval, $count);
 
 $SIG{ALRM} = sub {
 #    printf("ALRAM: %s\n", $cmd);
@@ -47,14 +52,16 @@ $SIG{ALRM} = sub {
     }
     #
     # Number of files generated at once
-    $nfiles = 3;
-    while ($nfiles-- > 0) {
+    $nf = $nfiles;
+    while ($nf-- > 0) {
 	do {
 	    $line = <INPUT>;
 	} while ($line !~ /^[\d]/);
 	($_, $fname,$_) = split(',', $line);
-	$fname =~ /kobe_(.+).dat/;
-	$fname = "kobe_" . $1 . ".dat";
+#	$fname =~ /kobe_(.+).dat/;
+#	$fname = "kobe_" . $1 . ".dat";
+	$fname =~ s/^ *(.*) *$/$1/;
+	printf("fname(%s)\n", $fname);
 	$fgzname = $fname . ".gz";
 	$cmd = "cd " . $dir . "; tar --to-stdout -x -f " . $targzfile
 	    . " " . $fgzname  . " | gunzip >" . $fname;
