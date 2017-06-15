@@ -23,6 +23,7 @@ case "$1" in
   stop)
         echo -n "Stopping jit-dt: "
 	kill -KILL `cat $PID_FILE`
+	kill -KILL `sed -e 's/.*pid \(.*\);/\1/' $SCRIPT_FILE`
         echo "done"
         ;;
   *)
