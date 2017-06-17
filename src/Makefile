@@ -4,7 +4,7 @@
 #
 CCFLAGS = -DUSE_LOCKF
 INSTTOP = /opt/nowcast
-#INSTTOP = $(HOME)
+#INSTTOP = $(HOME)/nowcast
 
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki
