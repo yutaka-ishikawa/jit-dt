@@ -83,6 +83,7 @@ mkhist(char *path, int *entsize)
     entries = sync_nsize();
     *entsize = entries;
     if (dt == history[curhistp].date) {
+    retry:
 	if (history[curhistp].fname[entpoint] != 0) {
 	    fprintf(stderr, "Multiple receive type: %s\n", type);
 	    return NULL;
@@ -93,9 +94,19 @@ mkhist(char *path, int *entsize)
 	}
 	/* all filled */
 	return &history[curhistp];
+    } else if (dt < history[curhistp].date) {
+	fprintf(stderr, "Late arrival: %s\n", cp);
+	/* find the entry, at most two before */
+	for (i = 0; i < 2; i++) {
+	    curhistp = (curhistp - 1) % nhist;
+	    if (dt == history[curhistp].date) goto retry;
+	}
     } else { /* new entry */
 	curhistp = (curhistp + 1) % nhist;
-	if (history[curhistp].date > 0) {
+	if (dt == history[curhistp].date) {
+	    /* A file at the time represented by dt has arrived before */
+	    goto retry;
+	} else if (history[curhistp].date > 0) {
 	    /* removing */
 	    VMODE {
 		fprintf(stderr, "kwatcher: removing %lld\n",
