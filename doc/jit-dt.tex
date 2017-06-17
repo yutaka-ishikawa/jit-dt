@@ -367,12 +367,14 @@ scpが待状態となってしまうからである。
 \begin{itemize}
 \item 神戸PAWRの場合\\
 \begin{lstlisting}[frame=single]
-$ ./kwatcher /opt/nowcast/kobe/bell/ /opt/nowcast/kobe/data/
+$ ./kwatcher -c /opt/nowcast/kobe/conf \
+              /opt/nowcast/kobe/bell/ /opt/nowcast/kobe/data/
 \end{lstlisting}
 
 \item 吹田PAWRの場合\\
 \begin{lstlisting}[frame=single]
-$ ./kwatcher /opt/nowcast/kobe/bell/ /opt/nowcast/kobe/data/
+$ ./kwatcher -c /opt/nowcast/fukita/conf \
+              /opt/nowcast/fukita/bell/ /opt/nowcast/fukita/data/
 \end{lstlisting}
 \end{itemize}
 

@@ -4,10 +4,10 @@ PKCS11=~/.ssh/id_rsa-1
 SCRIPT_FILE=~/SSH_AGENT_SCRIPT
 PID_FILE=~/JITDT_PID
 DAEMON=watch_and_transfer
-OPTIONS="sftp:ishikawa@hibiki.aics.riken.jp:/opt/nowcast/data/  \
+OPTIONS="sftp:ishikawa@hibiki.aics.riken.jp:/opt/nowcast/fukita/data/  \
     /mnt/latest-raw/ \
-    -c $TOP/conf \
-    -n $TOP/jitready:/opt/nowcast/kobe/bell/ -v -D \
+    -c $TOP/etc/serverconf \
+    -n $TOP/jitready:/opt/nowcast/fukita/bell/ -v -D \
     -f /$TOP/nowcast/JITLOG"
 
 #    -s 2017-0615/20/
