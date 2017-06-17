@@ -8,7 +8,7 @@ OPTIONS="sftp:ishikawa@hibiki.aics.riken.jp:/opt/nowcast/kobe/data/  \
     /mnt/latest-kobe/ \
     -c $TOP/etc/serverconf \
     -n $TOP/jitready:/opt/nowcast/kobe/bell/ -v -D \
-    -f /$TOP/nowcast/JITLOG"
+    -f /$TOP/JITLOG"
 
 #    -s 2017-0615/20/
 
