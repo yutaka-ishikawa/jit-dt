@@ -10,38 +10,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "jitclient.h"
+#include <jitclient.h>
 
 #define ITER		10
 #define BUFSIZE		(40*1024*1024)
-#define NUM_ENTRIES	2
 #define DBUF_SIZE	128
-
 #ifdef MPIENV
 static int	nprocs, myrank;
 #endif
-
 static char	fname[PATH_MAX+1];
 static char	timebuf[DBUF_SIZE];
 static char	timefmtbuf[DBUF_SIZE];
 static char	place[PATH_MAX+1];
 
-struct data {
-    char	d1[BUFSIZE];	/* 1st entry of the sync decl in conf */
-    char	d2[BUFSIZE];	/* 2nd entry of the sync decl in conf */
+struct vrze {
+    char	vr[BUFSIZE];
+    char	ze[BUFSIZE];
 } data;
-/*
- * size : IN  buffer sizes, OUT read sizes
- */
-int	sizes[NUM_ENTRIES];
+struct vrze_size {
+    int		vsize;
+    int		zsize;
+} vrze_size[2];
 
 int
 main(int argc, char **argv)
 {
-    int		i, j, iter;
+    int		i, iter;
     struct timeval	time;
     struct timezone	tzone;
-
 
     if (argc < 2) {
 	fprintf(stderr, "usage: %s [<watching directory>|<host name>] "
@@ -58,14 +54,12 @@ main(int argc, char **argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-    if (myrank == 0) {
-	printf("Tanstest: nprocs(%d)\n", nprocs);
-    }
+    if (myrank == 0) printf("Tanstest: nprocs(%d)\n", nprocs);
 #endif
-    for (i = 0; i < NUM_ENTRIES; i++) sizes[i] = BUFSIZE;
+    vrze_size[0].vsize = vrze_size[0].zsize = BUFSIZE;
     for (i = 0; i < iter; i++) {
 	memset(timebuf, 0, DBUF_SIZE);
-	if (jitget(place, fname, &data, sizes, NUM_ENTRIES) < 0) {
+	if (jitget(place, fname, &data, &vrze_size) < 0) {
 	    printf("Cannot get a file\n");
 	    continue;
 	}
@@ -74,10 +68,9 @@ main(int argc, char **argv)
 #ifdef MPIENV
 	if (myrank == 0) {
 #endif
-	    printf("%s=> %s\n", timefmtbuf, fname);
-	    for (j = 0; j < NUM_ENTRIES; j++) {
-		printf("\tdata%d size(%d)\n", j, sizes[j]);
-	    }
+	    printf("vr(%p) size(%d)\n", data.vr, vrze_size[0].vsize);
+	    printf("ze(%p) size(%d)\n", data.ze, vrze_size[0].zsize);
+	    printf("%s,%s\n", fname, timefmtbuf);
 	    fflush(stdout);
 #ifdef MPIENV
 	}

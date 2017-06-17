@@ -4,6 +4,7 @@
 %\topmargin=-0.5cm
 \textwidth=16.5cm
 %\textheight=23cm
+\date{2017年6月17日}
 \date{2017年5月15日}
 \long\def\comment#1{}
 \usepackage[dvipdfmx]{graphicx,color,hyperref}
@@ -106,14 +107,14 @@ kwatcherデーモンは{\tt watch\_and\_transfer}デーモンからsftpを使って
 新しいファイルが転送されるのを監視する。
 例えば以下のように{\tt kwatcher}が起動されていたとする。
 \begin{verbatim}
-  ./kwatcher /tmp/bell /scratch/ra000022/a03228/data
+  ./kwatcher /tmp/bell /scratch/ra000022/nowcast_pawr/data
 \end{verbatim}
 
 この例では、/tmp/bell/はリモートサーバとの同期用に使われる。\\
-/scratch/ra000022/a03228/data/はリモートサーバからのファイルが格納される
+/scratch/ra000022/nowcast\_pawr/data/はリモートサーバからのファイルが格納される
 ディレクトリである。\\
 \noindent
-すなわち、リモートサーバは/scratch/ra000022/a03228/data/
+すなわち、リモートサーバは/scratch/ra000022/nowcast\_pawr/data/
 にファイルを格納すると、同期用のファイルを/tmp/bellに格納する。
 同期用ファイルには到着したファイル名が格納されている。
 {\tt kwatcher}は{\tt inotify}システムコールを使って、/tmp/bell下の同期
@@ -166,7 +167,7 @@ JIT-READY-1、JIT-READY-2を交互に利用することにより、アプリケーションが
 スレッドである。
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{インストール}
+\section{インストール}\label{sec:inst}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %==============================================================================
 \subsection{必要なライブラリ}
@@ -176,6 +177,9 @@ JIT-DTツールが必要とするライブラリの中で多くのLinuxディストリビューショ
 %------------------------------------------------------------------------------
 \subsubsection{クライアント}
 %------------------------------------------------------------------------------
+クライアント側httpプロトコル実装にlibcurlを使用している。httpプロトコル
+利用するならインストールが必要。デフォルトではhttpプロトコルは実装され
+ない。
 \begin{itemize}
 \item libcurl
 \end{itemize}
@@ -183,6 +187,10 @@ JIT-DTツールが必要とするライブラリの中で多くのLinuxディストリビューショ
 %------------------------------------------------------------------------------
 \subsubsection{サーバ}
 %------------------------------------------------------------------------------
+サーバ側httpプロトコル実装にlibmicrohttpを使用している。
+httpプロトコル利用するならインストールが必要。デフォルトではhttpプロト
+コルは実装されない。
+
 \begin{itemize}
 \item libmicrohttdp
 \end{itemize}
@@ -190,12 +198,17 @@ JIT-DTツールが必要とするライブラリの中で多くのLinuxディストリビューショ
 %==============================================================================
 \subsection{インストール手順}
 %==============================================================================
-インストール後以下のディレクトリが作成される。
+httpプロトコルを利用したい場合は、Makefile中、HTTPを定義する。
+デフォルト、インストール後以下のディレクトリが作成される。
 \begin{verbatim}
-   /opt/nowcast/bin
-   /opt/nowcast/lib
-   /opt/nowcast/include
+   /opt/nowcast/bin/
+   /opt/nowcast/lib/
+   /opt/nowcast/include/
+   /opt/nowcast/etc/
 \end{verbatim}
+
+クライアント上およびサーバ上でいくつかの設定が必要である。第
+\ref{sec:usage}節利用法を参照のこと。
 
 クライアントおよびサーバプログラムをインスールする場合:
 \begin{lstlisting}[frame=single]
@@ -221,26 +234,112 @@ $ make install_server
 \end{lstlisting}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{利用法}
+\section{利用法}\label{sec:usage}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ここでは以下の環境を仮定する。
+なお、pawr-dp03は神戸、pawr-dp04は吹田にそれぞれ設置されたPAWR観測デー
+タが格納されると仮定している。
 管理者端末からリモートサーバやログインノードにsshでアクセスする。
 
 \begin{center}
 \begin{tabular}{l|l} \hline
 管理者端末名 & myterminal \\ 
-リモートサーバ名 & pawr-dp03 \\
-リモートサーバユーザ名 & server \\
-ログインノード名 & 134.160.185.83(klogin3) \\
-ログインノードユーザ名 & a03228 \\ \hline
+リモートサーバ名 & pawr-dp03, pawr-dp04 \\
+リモートサーバユーザ名 & aics \\
+%%ログインノード名 & 134.160.185.83(klogin3) \\
+ログインノード名 & hibiki.aics.riken.jp \\
+ログインノードユーザ名 & nowcast\_pawr \\ \hline
 \end{tabular}
 \end{center}
 
 なお、「京」コンピュータのホスト名k.aics.riken.jpを使ってログインノード
-にアクセスすると、ロードバランサによってノードが割り振られるため同じロ
+にアクセスする場合、ロードバランサによってノードが割り振られるため同じロ
 グインノードに接続されるとは限らない。
 後述する利用法ではログインノードのローカルファイルシステムを使用した
 例となっているため、ログインノードは固定されている必要がある。
+
+%==============================================================================
+\subsection{ログインノード上での設定}\label{subsec:login-setup}
+%==============================================================================
+第\ref{sec:inst}節に記載した手順でJIT-DTをインストールした後以下の設定を行う。
+
+%------------------------------------------------------------------------------
+\subsubsection{ワーキングディレクトリの設定}
+%------------------------------------------------------------------------------
+JIT-DTが使用するリモートサーバとの同期用ディレクトリおよびリモードサーバからの
+ファイルが格納されるディレクトリを作成する。
+
+\begin{itemize}
+\item 神戸PAWR用\\
+\begin{lstlisting}[frame=single]
+$ mkdir /opt/nowcast/kobe/data
+$ mkdir /opt/nowcast/kobe/bell
+\end{lstlisting}
+\item 吹田PAWR用\\
+\begin{lstlisting}[frame=single]
+$ mkdir /opt/nowcast/fukita/data
+$ mkdir /opt/nowcast/fukita/bell
+\end{lstlisting}
+\end{itemize}
+
+この例では、/opt/nowcast/.../bell/はリモートサーバとの同期用に使われ、
+/opt/nowcast/.../data/にリモートサーバからのファイルが格納される。
+
+%------------------------------------------------------------------------------
+\subsubsection{設定ファイルの作成}
+%------------------------------------------------------------------------------
+kwatcher、lwatcherの設定ファイルを作成する。
+デフォルト設定でインストールした場合には、以下のディレクトリにconfという
+ファイルが作成されている。これは神戸PAWR、吹田PAWRに使える設定ファイルである。
+設定ファイルの仕様は第\ref{sec:conf}節を参照のこと。
+\begin{verbatim}
+   /home/aics/nowcast/etc/
+\end{verbatim}
+
+\begin{itemize}
+\item 神戸PAWRの場合\\
+\begin{lstlisting}[frame=single]
+$ cp /opt/nowcast/etc/conf /opt/nowcast/kobe/etc/conf
+\end{lstlisting}
+\item 吹田PAWRの場合\\
+\begin{lstlisting}[frame=single]
+$ cp /opt/nowcast/etc/conf /opt/nowcast/fukita/etc/conf
+\end{lstlisting}
+\end{itemize}
+
+%==============================================================================
+\subsection{リモートサーバpawr-dp03あるいはpawr-dp04上での設定}
+%==============================================================================
+第\ref{sec:inst}節に記載した手順でJIT-DTをインストールした後以下の設定を行う。
+
+%------------------------------------------------------------------------------
+\subsubsection{設定ファイルの修正}
+%------------------------------------------------------------------------------
+watch\_and\_transferが転送するファイル名のパターンを
+の設定ファイルで定義する。定義規則は第\ref{sec:conf}節参照。
+デフォルト設定でJIT-DTをインストールした場合には、以下のディレクトリに
+serverconfというファイルが作成されている。設定ファイルの仕様は第
+\ref{sec:conf}節を参照のこと。
+\begin{verbatim}
+   /home/aics/nowcast/etc/
+\end{verbatim}
+
+%------------------------------------------------------------------------------
+\subsubsection{ログインノードへのログイン確認およびknown\_hostsへの登録}
+%------------------------------------------------------------------------------
+ssh agentが動作していてログインノードhibikiにパスワードなしでログイン出
+来るか確認すると共にknown\_hostsにログインノードを登録する。
+\begin{verbatim}
+   $ ssh nowcast_pawr@hibiki.aics.riken.jp
+\end{verbatim}
+
+これは単なる動作確認だけでなく、一度sshでログインすることにより、
+known\_hostsに転送先のIPアドレスが登録されることが重要である。
+known\_hostsに転送先のIPアドレスが登録されていないと、
+watch\_and\_transferがscpを起動した時インタラクティブにknown\_hostsに登
+録するかどうか確認を求めてくるが、watch\_and\_transferは応えないために
+scpが待状態となってしまうからである。
+
 
 %==============================================================================
 \subsection{myterminal側}
@@ -252,88 +351,118 @@ $ make install_server
     　　ForwardAgent yes
 \end{verbatim}
 
-\item  agentに転送先(Kコンピュータ)用private keyを登録
+\item  ssh agentに転送先(Kコンピュータ)用private keyを登録
 \begin{verbatim}
    $ ssh-add ~/.ssh/id_rsaxxx
 \end{verbatim}
 \end{enumerate}
 
 %==============================================================================
-\subsection{ログインノードklogin3}
+\subsection{ログインノードhibiki}
 %==============================================================================
-
 %------------------------------------------------------------------------------
 \subsubsection{ファイルシステム経由}
 %------------------------------------------------------------------------------
 ログインノードにログインし、以下のコマンドを実行する。
+\begin{itemize}
+\item 神戸PAWRの場合\\
 \begin{lstlisting}[frame=single]
-$ mkdir /scratch/ra000022/a03228/data
-$ mkdir /tmp/bell
-$ ./kwatcher /tmp/bell /scratch/ra000022/a03228/data/
+$ ./kwatcher /opt/nowcast/kobe/bell/ /opt/nowcast/kobe/data/
 \end{lstlisting}
 
-この例では、/tmp/bell/はリモートサーバとの同期用に使われ、
-/scratch/ra000022/a03228/data/にリモートサーバからのファイルが格納される。
+\item 吹田PAWRの場合\\
+\begin{lstlisting}[frame=single]
+$ ./kwatcher /opt/nowcast/kobe/bell/ /opt/nowcast/kobe/data/
+\end{lstlisting}
+\end{itemize}
 
+この例では、/opt/nowcast/.../bell/はリモートサーバとの同期用に使われ、
+/opt/nowcast/.../data/にリモートサーバからのファイルが格納される。
 %------------------------------------------------------------------------------
 \subsubsection{通信経由}
 %------------------------------------------------------------------------------
 ログインノードにログインし、以下のコマンドを実行する。
+\begin{itemize}
+\item 神戸PAWRの場合\\
 \begin{lstlisting}[frame=single]
-$ mkdir /opt/nowcast/data
-$ lwatcher -v /opt/nowcast/data
+$ mkdir /opt/nowcast/kobe/data
+$ lwatcher -v /opt/nowcast/kobe/data
 \end{lstlisting}
 
-この例では、/opt/nowcast/data/ディレクトリにリモートサーバからのファイ
+\item 吹田PAWRの場合\\
+\begin{lstlisting}[frame=single]
+$ mkdir /opt/nowcast/fukita/data
+$ lwatcher -v /opt/nowcast/fukita/data
+\end{lstlisting}
+\end{itemize}
+
+この例では、/opt/nowcast/.../data/ディレクトリにリモートサーバからのファイ
 ルが格納される。
+なお、2017年6月17日時点において、機能拡張を行った現バージョンの
+lwatcher動作テストはまだ行っていない。
 
 %==============================================================================
-\subsection{リモートサーバpawr-dp03}
+\subsection{リモートサーバpawr-dp03あるいはpawr-dp04}
 %==============================================================================
 myterminalからリモートサーバにログインし以下を実行する。
-\begin{enumerate}
-\item 
-ssh agentが動作していてKコンピュータにパスワードなしでログイン出来るか確認する。
-\begin{verbatim}
-   $ ssh a03228@k.aics.riken.jp
-\end{verbatim}
-単なる動作確認だけでなく、一度sshでログインすることにより、
-known\_hostsに転送先のIPアドレスが登録されることが重要である。
-known\_hostsに転送先のIPアドレスが登録されていないと、
-watch\_and\_transferがscpを起動した時インタラクティブにknown\_hostsに登
-録するかどうか確認を求めてくるが、watch\_and\_transferは応えないために
-scpが待状態となってしまう。
 
-\item 以下を実行する。
+\begin{itemize}
+\item pawr-dp03上\\
 \begin{verbatim}
-   $ ./watch_and_transfer \
-       sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data/  \
-       /mnt/latest-kobe \
-       -n /tmp/ditready:/tmp/bell/ \
-       -s 2016-1024/16/ -v
+   $ watch_and_transfer \
+     sftp:nowcast_pawr@hibiki.aics.riken.jp:opt/nowcast/kobe/data/  \
+     /mnt/latest-kobe \
+     -c /home/aics/nowcast/etc/serverconf \
+     -n /home/aics/nowcast/jitready:opt/nowcast/kobe/bell/ \
+     -s 2017-0615/16/ -v
 \end{verbatim}
 上記例は以下の意味となる。
 {\tt watch\_and\_transfer}は、{\tt /mnt/latest-kobe}ディレクトリ下にファ
 イルが生成されるのを検知すると、
-{\tt sftp}コマンドを使ってリモートマシン134.160.185.83の{\tt a03228}アカウント
-の{\tt /scratch/ra000022/a03228/data/}にそのファイルを転送する。
+{\tt sftp}コマンドを使ってリモートマシンの{\tt nowcast\_pawr}アカウント
+の{\tt /nowcast/kobe/data/}にそのファイルを転送する。
 最初に監視するディレクトリを指定する必要があり、ここでは
-{\tt 2016-1024/16/}ディレクトリを指定している。
+{\tt 2017-0615/16/}ディレクトリを指定している。
 すなわち、{\tt watch\_and\_transfer}は{\tt
-  /mnt/latest-kobe/2016-1024/16/ディレクトリ}を監視する。
-\end{enumerate}
+  /mnt/latest-raw/2017-0615/16/ディレクトリ}を監視する。
 
+-cオプションは設定ファイルの指定である。
+-nオプションはクライアントデーモンとの同期用に使われるデーモン側で
+使用する一時ファイル名とクライアント側で使用するディレクトリを指定している。
+
+\item pawr-dp04上\\
+下記はpawr-dp04での利用例である。
+\begin{verbatim}
+   $ watch_and_transfer \
+     sftp:nowcast_pawr@hibiki.aics.riken.jp:opt/nowcast/kobe/data/  \
+     /mnt/latest-raw \
+     -c /home/aics/nowcast/etc/serverconf \
+     -n /home/aics/nowcast/jitready:opt/nowcast/kobe/bell/ \
+     -s 2017-0615/16/ -v
+\end{verbatim}
+\end{itemize}
+上記実行後、30秒ごとにファイルが転送される。
+
+%------------------------------------------------------------------------------
 \subsubsection{デーモン実行}
-上記で動作確認したらデーモンとして実行する。デーモン実行のためのスクリプト
-jit-dtが用意されている。
-jit-dt中のPRIVATE\_KEY環境変数にはクライアントノードにscpするために
+%------------------------------------------------------------------------------
+前節で動作確認したらデーモンとして実行する。デーモン実行のためのスクリプト
+jit-dtおよびjit-dt-hibikiが用意されている。
+これらファイル中のPRIVATE\_KEY環境変数にはクライアントノードにscpするために
 必要となるsshプライベート鍵ファイルを指定する。
 デーモン起動は以下の通り。
 \begin{lstlisting}[frame=single]
 $ jit-dt start
+or
+$ jit-dt-hibiki start
 \end{lstlisting}
-jit-dtはssh鍵のパスフレーズを聞いてくるので、それを入力すると
-デーモンがスタートする。
+jit-dt (jit-dt-hibiki)はssh鍵のパスフレーズを聞いてくるので、それを入力すると
+デーモンがスタートする。デーモン実行停止は以下の通り。
+\begin{lstlisting}[frame=single]
+$ jit-dt stop
+or
+$ jit-dt-hibiki start
+\end{lstlisting}
 
 %==============================================================================
 \subsection{ローカルテスト}
@@ -371,29 +500,30 @@ now watching directory /opt/nowcast/bell/, dirid(1)
 \end{lstlisting}
 観測データが格納されているディレクトリ{\tt /opt/nowcast/data}を指定する。
 2番目の引数はデータの取得回数である。
-PWRは30秒ごとにファイルを生成しているので5分間のデータを取得している。
+PAWRは30秒ごとにファイルを生成しているので5分間のデータを取得している。
 
 \item {\tt ktestgen.pl}ツールを使って保存してある過去データを転送する。
 \begin{lstlisting}[frame=single]
   $ ktestgen.pl /opt/nowcast/testdata/JITDTLOG.20170510 \
        /opt/nowcast/testdata/data.tar /opt/nowcast/bell/ \
-       /opt/nowcast/data/ 10 10
+       /opt/nowcast/data/ 2 10 10
 \end{lstlisting}
 {\tt /opt/nowcast/testdata/JITDTLOG.20170510}は、2017年5月10日17:00から17:30の
-期間の神戸PWRが生成したデータのログである。
+期間の神戸PAWRが生成したデータのログである。
 {\tt /opt/nowcast/testdata/data.tar}は、各観測データをgzipで圧縮した上で
 それらファイルをtarで一つのファイルにまとめたものである。
 {\tt /opt/nowcast/bell/}は{\tt kwacther}が監視しているディレクトリである。
 
-最後の2つのアーギュメントはそれぞれ、データ生成間隔（秒）と生成回数であ
-る。データ生成間隔のデフォルト値は観測データ生成間隔と同じ30秒である。
+最後の3つのアーギュメントはそれぞれ、利用するデータ数、データ生成間隔
+（秒）と生成回数である。上記観測データにはvrとveの２種類のデータが格納
+されているため、2を指定する。
+データ生成間隔のデフォルト値は観測データ生成間隔と同じ30秒である。
 アプリケーションの実行時間に合わせてデータ生成間隔を変更することが可能
 である。
 
 生成回数のデフォルト値は{\tt /opt/nowcast/testdata/JITDTLOG.20170510}で
 示されている観測データ分である。
 デバッグ目的で生成回数を変更したい場合に使用する。
-
 \end{enumerate}
 
 %------------------------------------------------------------------------------
@@ -404,6 +534,64 @@ PWRは30秒ごとにファイルを生成しているので5分間のデータを取得している。
 %\begin{enumerate}
 %
 %\end{enumerate}
+
+%=============================================================================
+\subsection{設定ファイル}\label{sec:conf}
+%=============================================================================
+
+\subsubsection{kwachter設定ファイル}
+以下、{\tt kwachter}の設定ファイル例である。
+\begin{lstlisting}[frame=single]
+region kobe {
+    pattern = ".*_\\(.*\\)_A08_pawr_\\(.*\\).dat";
+    date = "$1";
+    type = "$2";
+    fname = "kobe_$1_$2.dat";
+}
+sync {
+     type = "vr";
+     type = "ze";
+}
+\end{lstlisting}
+region定義は受信データファイルに対するファイル名処理を規定している。
+サーバから送られてくるファイルは、patternで規定される正規表現を使って
+ファイル名に埋め込まれている日付およびデータタイプ情報を取り出す。
+クライアント側で格納するファイル名もこの情報を使って決めている。
+regionキーワードの後の名前は任意の文字列が使える。
+region定義は同じ名前が使われても良い。パターンは定義順に適用され、最初に
+マッチしたパターンのregion定義が使われる。
+
+sync定義は、同時刻観測データ群のうちどのデータタイプ情報をアプリケーション
+側に知らせるかを決める規則である。
+
+以下、BNF記法による定義規則を示す。
+
+\begin{lstlisting}[frame=single]
+<region>    : region <name> '{' <item-list> '}'
+<item-list> : <item>
+            | <item> <item-list> 
+<item>      : <pattern> | <date> | <type> | <file name>
+<pattern>   : pattern '=' <regular expression> ';'
+<date>      : date '=' <format> ';'
+<type>      : type '=' <format> ';'
+<file name> : fname '=' <format> ';'
+
+<sync>      : sync  '{' <type-list> '}'
+<type-list> : <type>
+            | <type> <type-list>
+\end{lstlisting}
+$<$name$>$は英数文字。$<$regular expression$>$はPOSIX正規表現。
+$<$format$>$は文字列および正規表現で指定した部分文字列にマッチした
+文字列を$\$$で始まる数字によって含めることが可能。
+例えば、以下の正規表現に対して、
+\begin{verbatim}
+      "kobe_\\(.*\\)_A08_pawr_\\(.*\\).dat";
+\end{verbatim
+以下の文字列をマッチさせると、
+\begin{verbatim}
+      kobe_20161209171230_A08_pawr_ze.dat
+\end{verbatim}
+$\$1$、$\$2$は、それぞれ、''20161209171230''、''ze''の文字列を指す。
 
 %=============================================================================
 \subsection{プログラミング}
@@ -442,6 +630,7 @@ MPIアプリケーション用通信経由JIT
 \item SYNOPSIS \\
 {\tt watch\_and\_transfer $<$url$>$ $<$watching directory path$>$}\\
 {\tt ~~~~~~~~~~~~~~~~~~[-s $<$start directory path$>$]}\\
+{\tt ~~~~~~~~~~~~~~~~~~[-c $<$configuration file$>$]}\\
 {\tt ~~~~~~~~~~~~~~~~~~[-n $<$local file$>$:$<$remote notification directory$>$]}\\
 {\tt ~~~~~~~~~~~~~~~~~~[-f $<$log file name $>$] [-D] [-v] [-d] [-k]}
 
@@ -452,8 +641,8 @@ remote client.
   procotol, one of sftp, scp, and http.
 Here are exmples in case of sftp and scp, 
 \begin{verbatim}
-    sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data
-    scp:a03228@134.160.185.83:/scratch/ra000022/a03228/data
+    sftp:nowcast_pawr@134.160.185.83:/scratch/ra000022/nowcast_pawr/data
+    scp:nowcast_pawr@134.160.185.83:/scratch/ra000022/nowcast_pawr/data
 \end{verbatim}
 The speficiation after ``sftp:'' or ``scp:'' is the same one in the sftp/scp
 command.
@@ -462,7 +651,7 @@ command.
 files/directories.
 If a new directory is created, it also watches the new directory.
 
-The {\tt $<$start directory path$>$} must be under the {\tt $<$watching directory path$>$} directory. In case of PWR, an observed data
+The {\tt $<$start directory path$>$} must be under the {\tt $<$watching directory path$>$} directory. In case of PAWR, an observed data
 is stored under a directory whose path represents the created time.
 
 For example, assuming that the top directory specified {\tt $<$watching directory path$>$} is ``{\tt /mnt/latest-kobe}'' and 
@@ -487,7 +676,7 @@ under the ``{\tt /mnt/latest-kobe/}'',  the first watching point is
 as follows:
 \begin{verbatim}
    watch_and_transfer \
-     sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data \
+     sftp:nowcast_pawr@134.160.185.83:/scratch/ra000022/nowcast_pawr/data \
      /mnt/latest-kobe \
      -s 2017-0503/00/10
 \end{verbatim}
@@ -502,7 +691,7 @@ client.
 
 \begin{verbatim}
    watch_and_transfer \
-     sftp:a03228@134.160.185.83:/scratch/ra000022/a03228/data \
+     sftp:nowcast_pawr@134.160.185.83:/scratch/ra000022/nowcast_pawr/data \
      /mnt/latest-kobe \
      -s 2017-0503/00/10 \
      -f /tmp/myditready:/tmp/ishikawa/
@@ -593,7 +782,7 @@ In this document, please see the Section \ref{subsec:lwatcher}.
 \item DESCRIPTION \\
 This is a tool to simulate {\tt watch\_and\_transfer} for the file passing
 method.
-It uses old recorded data generated by PWR.
+It uses old recorded data generated by PAWR.
 In this document, please see the Section \ref{subsubsec:via-file}.
 \end{itemize}
 
@@ -612,7 +801,7 @@ In this document, please see the Section \ref{subsubsec:via-file}.
 \item DESCRIPTION \\
 This is a tool to simulate {\tt watch\_and\_transfer} for the message passing
 method.
-It uses old recorded data generated by PWR.
+It uses old recorded data generated by PAWR.
 In this document, please see the Section \ref{subsubsec:via-comm}.
 \end{itemize}
 
@@ -699,25 +888,24 @@ on a login node.
 
 \item SYNOPSIS \\
 {\tt \#include $<$jitclient.h$>$}\\ \noindent
-{\tt int jitget(char *place, char *fname, void *data, void *size);}
+{\tt int jitget(char *place, char *fname, void *data, int *size, int count);}
 
 \item DESCRIPTION \\
 The {\tt jitget} reads a data set to the {\tt data} area.
 The {\tt size} specifies how the {\tt data} area is partitioned.
+The {\tt count} specifies the entry size of the {\tt size} array.
 This is a collective operation, i.e., all MPI ranks must call this function.
 An example is shown as follows:
 \begin{verbatim}
 #define BUFSIZE (40*1024*1024)
-struct vrze {
-    char	vr[BUFSIZE];
-    char	ze[BUFSIZE];
+struct data {
+  char  d1[BUFSIZE]; /* 1st entry of the sync decl in conf */
+  char	d2[BUFSIZE]; /* 2nd entry of the sync decl in conf */
 } data;
-struct vrze_size {
-    int		vsize;
-    int		zsize;
-} vrze_size[2];
-vrze_size[0].vsize = vrze_size[0].zsize = BUFSIZE;
-cc = jitget("/opt/nowcast/bell", &data, &vrze_size);
+/* size : IN  buffer sizes, OUT read sizes */
+int	sizes[2];
+
+cc = jitget("/opt/nowcast/bell", &data, sizes, 2);
 \end{verbatim}
 \end{itemize}
 

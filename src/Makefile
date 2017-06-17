@@ -3,8 +3,8 @@
 # For Hibiki, -DUSE_LOCKF must be removed
 #
 CCFLAGS = -DUSE_LOCKF
-#INSTTOP = /opt/nowcast
-INSTTOP = $(HOME)
+INSTTOP = /opt/nowcast
+#INSTTOP = $(HOME)
 
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki
@@ -14,6 +14,7 @@ CLIENT_CMDS=kwatcher lwatcher transgen \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
 	ktestgen.pl ltestgen.pl
 CLIENT_CONFS=conf conf-test
+SERVER_CONFS=serverconf
 
 HOSTNAME=$(shell hostname)
 MPICC = mpicc
@@ -74,6 +75,8 @@ install: install_server install_client install_lib
 install_server: server
 	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
 	$(INSTALL) $(SERVER_CMDS) $(INSTBIN) 
+	[ -d $(INSTETC) ] || mkdir -p $(INSTETC)
+	$(INSTALL) $(SERVER_CONFS) $(INSTETC) 
 install_client: client
 	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
 	$(INSTALL) $(CLIENT_CMDS) $(INSTBIN) 

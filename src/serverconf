@@ -1,0 +1,19 @@
+#
+# Kobe
+#	kobe_20161209171230_A08_pawr_ze.dat
+# Osaka
+#	20150806-140030.all.10000000.dat
+#	20150806-140030.all.20000000.dat
+#	20150806-140030.all_pawr_qcf.dat
+
+region kobe {
+    pattern = ".*_\\(.*\\)_A08_pawr_\\(.*\\).dat";
+}
+
+region osaka {
+    pattern = ".*all.02000000.dat";
+}
+
+region osaka {
+    pattern = ".*all_pawr_qcf.dat";
+}
