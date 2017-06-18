@@ -83,7 +83,13 @@ mkhist(char *path, int *entsize)
 	return NULL;
     }
     entries = sync_nsize();
+    if (entries > FNAME_MAX) {
+	LOG_PRINT("Needs to reconfigure kwatcher:"
+		  "FNAME_MAX must be %d or larger\n", entries);
+	exit(-2);
+    }
     *entsize = entries;
+    LOG_PRINT("curhistp(%d) nhist(%d)\n", curhistp, nhist);
     if (dt == history[curhistp].date) {
     retry:
 	if (history[curhistp].fname[entpoint] != 0) {
@@ -97,35 +103,42 @@ mkhist(char *path, int *entsize)
 	/* all filled */
 	return &history[curhistp];
     } else if (dt < history[curhistp].date) {
+	int	savedp = curhistp;
 	LOG_PRINT("Late arrival: %s\n", cp);
 	/* find the entry, at most two before */
 	for (i = 0; i < 2; i++) {
-	    curhistp = (curhistp - 1) % nhist;
+	    if (curhistp == 0) {
+		curhistp = nhist - 1;
+	    } else {
+		curhistp = (curhistp - 1) % nhist;
+	    }
 	    if (dt == history[curhistp].date) goto retry;
 	}
-    } else { /* new entry */
-	curhistp = (curhistp + 1) % nhist;
-	if (dt == history[curhistp].date) {
-	    /* A file at the time represented by dt has arrived before */
-	    goto retry;
-	} else if (history[curhistp].date > 0) {
-	    /* removing */
-	    VMODE {
-		LOG_PRINT("kwatcher: removing %lld\n",
-			history[curhistp].date);
-	    }
-	    for (i = 0; i < entries; i++) {
-		char	*tcp;
-		if ((tcp = history[curhistp].fname[i])) {
-		    unlink(tcp);
-		    free(tcp);
-		    history[curhistp].fname[i] = 0;
-		}
+	/* not found */
+	curhistp = savedp;
+    }
+    /* new entry */
+    curhistp = (curhistp + 1) % nhist;
+    if (dt == history[curhistp].date) {
+	/* A file at the time represented by dt has arrived before */
+	goto retry;
+    } else if (history[curhistp].date > 0) {
+	/* removing */
+	VMODE {
+	    LOG_PRINT("kwatcher: removing %lld\n",
+		      history[curhistp].date);
+	}
+	for (i = 0; i < entries; i++) {
+	    char	*tcp;
+	    if ((tcp = history[curhistp].fname[i])) {
+		unlink(tcp);
+		free(tcp);
+		history[curhistp].fname[i] = 0;
 	    }
 	}
-	history[curhistp].date = dt;
-	history[curhistp].fname[entpoint] = cp;
-    }
+    } /* history[curhistp].date == 0 means that the first time */
+    history[curhistp].date = dt;
+    history[curhistp].fname[entpoint] = cp;
 nofilled:
     return NULL;
 }

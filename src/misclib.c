@@ -52,6 +52,7 @@ mydaemonize(char *lognm)
     if ((logfp = fopen(logname, "w")) == NULL) {
 	/* where we have to print ? /dev/console ? */
 	fprintf(stderr, "Cannot create the logfile: %s\n", logname);
+	fflush(stderr);
 	exit(-1);
     }
     /* printing daemon pid */
@@ -251,7 +252,8 @@ histput(char *path, long long dt, int tent)
     histdata	*ohp = NULL;
 
     if ((cp = malloc(strlen(path) + 1)) == NULL) {
-	fprintf(stderr, "histput:Cannot reserve memory\n"); exit(-1);
+	fprintf(stderr, "histput:Cannot reserve memory\n"); fflush(stderr);
+	exit(-1);
     }
     strcpy(cp, path);
 
@@ -318,19 +320,20 @@ locked_lock(char *path)
     strcat(lckpath, lockfname[ticktack]);
     if ((lckfd = open(lckpath, O_CREAT|O_RDWR, 0666)) < 0) {
 	fprintf(stderr, "Lock file %s cannot be created\n", lckpath);
-	perror("open");
+	perror("open");	fflush(stderr);
 	exit(-1);
     }
 #ifdef USE_LOCKF
     if ((cc = lockf(lckfd, F_LOCK, 0)) < 0) {
 	fprintf(stderr, "Lock file %s cannot be locked (%d)\n", lckpath, cc);
-	perror("lockf");
+	perror("lockf"); fflush(stderr);
 	exit(-1);
     }
 #else
     if ((cc = flock(lckfd, LOCK_EX)) < 0) {
 	fprintf(stderr, "Lock file %s cannot be locked (%d)\n", lckpath, cc);
 	perror("flock");
+	fflush(stderr);
 	exit(-1);
     }
 #endif
@@ -347,13 +350,13 @@ locked_unlock(int lckfd)
 #ifdef USE_LOCKF
     if ((cc = lockf(lckfd, F_ULOCK, 0)) < 0) {
 	fprintf(stderr, "Cannot be unlocked (%d)\n", cc);
-	perror("lockf");
+	perror("lockf"); fflush(stderr);
 	exit(-1);
     }
 #endif /* USE_LOCKF */
     if ((cc = close(lckfd)) < 0) {
 	fprintf(stderr, "Somthing wrong in closing lock file (%d)\n", cc);
-	perror("close");
+	perror("close"); fflush(stderr);
     }
 }
 
@@ -364,13 +367,13 @@ locked_unlock_nullify(int lckfd)
     /* NULL */
     if (lseek(lckfd, 0, SEEK_SET) != 0) {
 	fprintf(stderr, "Cannot be seek\n");
-	perror("lseek");
+	perror("lseek"); fflush(stderr);
 	exit(-1);
     }
     dat = 0;
     if (write(lckfd, &dat, 4) != 4) {
 	fprintf(stderr, "Cannot write\n");
-	perror("write");
+	perror("write"); fflush(stderr);
 	exit(-1);
     }
     locked_unlock(lckfd);
@@ -384,7 +387,7 @@ locked_write(int lckfd, char *info)
 
     if ((cc = write(lckfd, info, strlen(info) + 1)) < 0) {
 	fprintf(stderr, "Cannot write data in lock file (%d)\n", cc);
-	perror("write");
+	perror("write"); fflush(stderr);
     }
 }
 
@@ -396,7 +399,7 @@ locked_read(int lckfd, char *buf, int size)
 
     if ((cc = read(lckfd, buf, size)) < 0) {
 	fprintf(stderr, "Cannot read data in lock file\n");
-	perror("read");
+	perror("read");  fflush(stderr);
     }
     if ((idx = index(buf, '\n'))) *idx = 0;
     return cc;
@@ -416,7 +419,7 @@ regex_init()
     if ((cc = regcomp(&preg, regex, 0)) < 0) {
 	fprintf(stderr, "regexinit: compile error: %s\n", regex);
 	regerror(cc, &preg, errbuf, 1024);
-	fprintf(stderr, "\t%s\n", errbuf);
+	fprintf(stderr, "\t%s\n", errbuf);  fflush(stderr);
 	exit(-1);
     }
 }
@@ -430,7 +433,7 @@ regex_match(char *pattern, char *date, char *type)
     if ((cc = regexec(&preg, pattern, NMATCH, pmatch, 0)) < 0) {
 	fprintf(stderr, "regmatch: regexec error: %s\n", regex);
 	regerror(cc, &preg, errbuf, 1024);
-	fprintf(stderr, "\t%s\n", errbuf);
+	fprintf(stderr, "\t%s\n", errbuf);  fflush(stderr);
 	return -1;
     }
     if (cc == REG_NOMATCH) return -1;
