@@ -70,6 +70,10 @@ mkhist(char *path, int *entsize)
     if ((entpoint = sync_entry(type)) < 0) {
 	LOG_PRINT("Not expected data for synchronization: %s\n",
 		fnam);
+	strcpy(oldname, outdir); strcat(oldname, path);
+	if (unlink(oldname) != 0) {
+	    LOG_PRINT("Cannot remove %s: (%d)\n", oldname, errno);
+	}
 	return NULL;
     }
     if ((cp = malloc(strlen(fnam) + 1)) == NULL) {
@@ -89,7 +93,9 @@ mkhist(char *path, int *entsize)
 	exit(-2);
     }
     *entsize = entries;
-    LOG_PRINT("curhistp(%d) nhist(%d)\n", curhistp, nhist);
+    DBG {
+	LOG_PRINT("curhistp(%d) nhist(%d)\n", curhistp, nhist);
+    }
     if (dt == history[curhistp].date) {
     retry:
 	if (history[curhistp].fname[entpoint] != 0) {
@@ -131,7 +137,10 @@ mkhist(char *path, int *entsize)
 	for (i = 0; i < entries; i++) {
 	    char	*tcp;
 	    if ((tcp = history[curhistp].fname[i])) {
-		unlink(tcp);
+		strcpy(oldname, outdir); strcat(oldname, tcp);
+		if (unlink(oldname) != 0) {
+		    LOG_PRINT("Cannot remove %s: (%d)\n", oldname, errno);
+		}
 		free(tcp);
 		history[curhistp].fname[i] = 0;
 	    }
@@ -208,7 +217,7 @@ main(int argc, char **argv)
     curhistp = 0; nhist = MAX_HISTORY;
     strcpy(confname, DEFAULT_CONFNAME);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "c:dDvh:")) != -1) {
+	while ((opt = getopt(argc, argv, "c:dDvh:f:")) != -1) {
 	    switch (opt) {
 	    case 'c': /* conf */
 		strcpy(confname, optarg);
