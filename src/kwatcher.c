@@ -7,6 +7,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "misclib.h"
 #include "regexplib.h"
 #include "translib.h"
@@ -78,7 +79,7 @@ mkhist(char *path, int *entsize)
     strcpy(oldname, outdir); strcat(oldname, path);
     strcpy(newname, outdir); strcat(newname, cp);
     if (rename(oldname, newname) != 0) {
-	LOG_PRINT("Cannot rename (%s, %s)\n", oldname, newname);
+	LOG_PRINT("Cannot rename (%s, %s) : %d\n", oldname, newname, errno);
 	return NULL;
     }
     entries = sync_nsize();
