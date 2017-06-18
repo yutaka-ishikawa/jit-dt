@@ -81,6 +81,7 @@ logfupdate()
 	    /* How we report this error ? */
 	    exit(-1);
 	}
+	stdout = stderr = logfp;
     }
 }
 
