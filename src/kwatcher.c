@@ -174,6 +174,9 @@ transfer(char *fname, void **args)
 	LOG_PRINT("Cannot read file %s\n", fname);
 	return;
     }
+    if (close(fd) < 0) {
+	LOG_PRINT("Close error: %s\n", fname);
+    }
     namebuf[sz] = 0; /* terminating for string */
     /* adding history */
     VMODE {
