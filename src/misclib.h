@@ -3,7 +3,8 @@
 #include <sys/time.h>
 
 #define LOG_PRINT(...) fprintf(stderr, __VA_ARGS__); fflush(stderr);
-#define LOG_MAXENTRIES	(2*2*60*2)	/* 2 hours */
+//#define LOG_MAXENTRIES	(2*2*60*2)	/* 2 hours */
+#define LOG_MAXENTRIES	(4)
 
 extern int	mydaemonize();
 extern void	logfupdate();

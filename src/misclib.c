@@ -312,6 +312,7 @@ locked_lock(char *path)
 	/* otherwise file name is specified */
 	strcpy(lckpath, "./");
     }
+    umask(000);
     fformat(lckpath);
     strcat(lckpath, lockfname[ticktack]);
     if ((lckfd = open(lckpath, O_CREAT|O_RDWR, 0666)) < 0) {

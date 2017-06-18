@@ -9,7 +9,7 @@ INSTTOP = /opt/nowcast
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-fukita-hibiki
 SERVER_CMDS2=http_daemon http_put
-CLIENT_CMDS=kwatcher lwatcher transgen \
+CLIENT_CMDS=jit-kwatch jit-kobewatch kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
 	ktestgen.pl ltestgen.pl
