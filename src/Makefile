@@ -1,6 +1,5 @@
 #
 # For K, -DUSE_LOCKF is required
-# For Hibiki, -DUSE_LOCKF must be removed
 #
 CCFLAGS = -DUSE_LOCKF
 INSTTOP = /opt/nowcast
