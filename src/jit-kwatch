@@ -1,0 +1,24 @@
+#!/bin/bash
+TOP=~/nowcast/
+PID_FILE=~/KWATCH_PID
+DAEMON=kwatcher
+OPTIONS="-D -d -v "
+
+case "$1" in
+  start)
+        echo -n "Starting kwatch: "
+	$DAEMON $OPTIONS $* >$PID_FILE
+        echo "done"
+        ;;
+  stop)
+        echo -n "Stopping jit-kwatch: "
+	kill -KILL `cat $PID_FILE`
+        echo "done"
+        ;;
+  *)
+        echo "Usage: jit-kwatch start [<options>]" >&2
+        echo "       jit-kwatch stop" >&2
+        ;;
+esac
+
+exit 0
