@@ -9,7 +9,7 @@ OPTIONS="sftp:$REMOTEUSER@hibiki.aics.riken.jp:/opt/nowcast/kobe/data/  \
     /mnt/latest-kobe/ \
     -c $TOP/etc/serverconf \
     -n $TOP/jitready:/opt/nowcast/kobe/bell/ -v -D \
-    -f /$TOP/JITLOG"
+    -f $TOP/JITLOG"
 
 #    -s 2017-0615/20/
 

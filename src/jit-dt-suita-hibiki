@@ -9,7 +9,7 @@ OPTIONS="sftp:nowcast_pawr@hibiki.aics.riken.jp:/opt/nowcast/suita/data/  \
     /mnt/latest-raw/ \
     -c $TOP/etc/serverconf \
     -n $TOP/jitready:/opt/nowcast/suita/bell/ -v -D \
-    -f /$TOP/nowcast/JITLOG"
+    -f $TOP/JITLOG"
 
 #    -s 2017-0615/20/
 
