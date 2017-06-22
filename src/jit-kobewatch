@@ -12,7 +12,7 @@ case "$1" in
         echo -n "Removing data: "
 	rm -f $DATADIR/*
 	echo "done"
-        echo -n "Starting kwatch: "
+        echo -n "Starting kwatcher: "
 	echo "$DAEMON $OPTIONS $*"
 	$DAEMON $OPTIONS $* >$PID_FILE
         echo "done"
@@ -21,18 +21,18 @@ case "$1" in
         echo -n "Removing data: "
 	rm -f $DATADIR/*
 	echo -n "done"
-        echo -n "Starting kwatch: "
+        echo -n "Starting kwatcher: "
 	echo "$DAEMON $OPTIONS2 $*"
 	$DAEMON $OPTIONS2 $*
         ;;
   stop)
-        echo -n "Stopping jit-kwatch: "
+        echo -n "Stopping kwatcher: "
 	kill -KILL `cat $PID_FILE`
         echo "done"
         ;;
   *)
-        echo "Usage: jit-kwatch start [<options>]" >&2
-        echo "       jit-kwatch stop" >&2
+        echo "Usage: jit-kobewatch start [<options>]" >&2
+        echo "       jit-kobewatch stop" >&2
         ;;
 esac
 
