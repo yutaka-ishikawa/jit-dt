@@ -11,7 +11,7 @@ region kobe {
 }
 
 region osaka {
-    pattern = ".*all.2000000.dat";
+    pattern = ".*all.20000000.dat";
 }
 
 region osaka {
