@@ -61,23 +61,37 @@ add_watch(int fd, const char *path, uint32_t mask)
     return cc;
 }
 
+static void
+reset_watch(int ntfydir, int ntfyfile)
+{
+    int		wd, i;
+
+    if (ntfydir == 0 || ntfyfile == 0) return;
+    for (i = 0; i < MAX_KEEPDIR; i++) {
+	if ((wd = qrmdir[i]) > 0) {
+	    if (inotify_rm_watch(ntfydir, wd) < 0) perror("inotify_rm_watch");
+	    if (inotify_rm_watch(ntfyfile, wd) < 0) perror("inotify_rm_watch");
+	}
+    }
+    curqrmd = 0;
+}
 
 /*
  * Actual removing watching directory is postponed in rm_watch
  */
 static void
-rm_watch(int fd, int ntfydir, int ntfyfile, int flag)
+rm_watch(int wd, int ntfydir, int ntfyfile, int flag)
 {
-    curqrmd = (curqrmd + 1) % MAX_KEEPDIR;
     if (qrmdir[curqrmd] > 0) {
 	VMODE {
 	    fprintf(stderr,"leaving the directory %s (curdir=%d)\n",
 		    getwdir(curdir), curdir);
 	}
-	if (inotify_rm_watch(ntfydir, fd) < 0) perror("inotify_rm_watch");
-	if (inotify_rm_watch(ntfyfile, fd) < 0) perror("inotify_rm_watch");
+	if (inotify_rm_watch(ntfydir, wd) < 0) perror("inotify_rm_watch");
+	if (inotify_rm_watch(ntfyfile, wd) < 0) perror("inotify_rm_watch");
     }
-    qrmdir[curqrmd] = fd;
+    qrmdir[curqrmd] = wd;
+    curqrmd = (curqrmd + 1) % MAX_KEEPDIR;
 }
 
 /*
@@ -135,6 +149,7 @@ restart:
 	perror("inotify_init:");
 	exit(-1);
     }
+    reset_watch(ntfydir, ntfyfile);
     FD_ZERO(&readfds); FD_SET(ntfydir, &readfds); FD_SET(ntfyfile, &readfds);
     nfds = ntfyfile + 1;
     cc = add_watch(ntfydir, topdir, IN_CREATE);
