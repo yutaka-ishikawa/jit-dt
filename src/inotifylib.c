@@ -19,6 +19,7 @@
 #define VMODE		if (flag&MYNOTIFY_VERBOSE)
 #define DBG_VMODE	if (flag&(MYNOTIFY_DEBUG|MYNOTIFY_DEBUG))
 #define MAX_DIRS	(24*60*2+1)
+#define MAX_KEEPDIR	4
 #define PATH_WATCH	"./"
 #define BUFSIZE		(PATH_MAX + 1 + sizeof(struct inotify_event))
 #define IS_EXHAUST(idx)	(idx > (MAX_DIRS - 1))
@@ -31,6 +32,8 @@ char	wdirs[MAX_DIRS][PATH_MAX];
 char	nevtbuf[BUFSIZE];
 char	avpath[PATH_MAX];
 char	tmppath[PATH_MAX];
+int	qrmdir[MAX_KEEPDIR];
+int	curqrmd;
 
 static char *
 getwdir(int curid)
@@ -56,6 +59,25 @@ add_watch(int fd, const char *path, uint32_t mask)
 	exit(-1);
     }
     return cc;
+}
+
+
+/*
+ * Actual removing watching directory is postponed in rm_watch
+ */
+static void
+rm_watch(int fd, int ntfydir, int ntfyfile, int flag)
+{
+    curqrmd = (curqrmd + 1) % MAX_KEEPDIR;
+    if (qrmdir[curqrmd] > 0) {
+	VMODE {
+	    fprintf(stderr,"leaving the directory %s (curdir=%d)\n",
+		    getwdir(curdir), curdir);
+	}
+	if (inotify_rm_watch(ntfydir, fd) < 0) perror("inotify_rm_watch");
+	if (inotify_rm_watch(ntfyfile, fd) < 0) perror("inotify_rm_watch");
+    }
+    qrmdir[curqrmd] = fd;
 }
 
 /*
@@ -167,12 +189,7 @@ restart:
 		 * The upper level directory is created. This means
 		 * no more wating the current directory.
 		 */
-		VMODE {
-		    fprintf(stderr,"leaving the directory %s (curdir=%d)\n",
-			    getwdir(curdir), curdir);
-		}
-		if (inotify_rm_watch(ntfydir, curdir) < 0) perror("inotify_rm_watch");
-		if (inotify_rm_watch(ntfyfile, curdir) < 0) perror("inotify_rm_watch");
+		rm_watch(curdir, ntfydir, ntfyfile, flag);
 	    }
 	    if (IS_EXHAUST(curdir)) goto resetting;
 	    curdir = add_watch(ntfydir, avpath, IN_CREATE);
