@@ -10,9 +10,15 @@ region kobe {
     pattern = ".*_\\(.*\\)_A08_pawr_\\(.*\\).dat";
 }
 
+# ZE
 region osaka {
-    pattern = ".*all.20000000.dat";
+    pattern = ".*all.10000000.dat";
 }
+
+# VR
+#region osaka {
+#    pattern = ".*all.20000000.dat";
+#}
 
 region osaka {
     pattern = ".*all_pawr_qcf.dat";

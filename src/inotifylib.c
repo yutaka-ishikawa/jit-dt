@@ -82,13 +82,14 @@ reset_watch(int ntfydir, int ntfyfile)
 static void
 rm_watch(int wd, int ntfydir, int ntfyfile, int flag)
 {
-    if (qrmdir[curqrmd] > 0) {
+    int		dir;
+    if ((dir = qrmdir[curqrmd]) > 0) {
 	VMODE {
-	    fprintf(stderr,"leaving the directory %s (curdir=%d)\n",
-		    getwdir(curdir), curdir);
+	    fprintf(stderr,"leaving the directory %s (dir=%d)\n",
+		    getwdir(dir), dir);
 	}
-	if (inotify_rm_watch(ntfydir, wd) < 0) perror("inotify_rm_watch");
-	if (inotify_rm_watch(ntfyfile, wd) < 0) perror("inotify_rm_watch");
+	if (inotify_rm_watch(ntfydir, dir) < 0) perror("inotify_rm_watch");
+	if (inotify_rm_watch(ntfyfile, dir) < 0) perror("inotify_rm_watch");
     }
     qrmdir[curqrmd] = wd;
     curqrmd = (curqrmd + 1) % MAX_KEEPDIR;
