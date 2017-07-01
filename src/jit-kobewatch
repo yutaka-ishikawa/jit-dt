@@ -1,39 +1,5 @@
 #!/bin/bash
-TOP=~/nowcast/
-PID_FILE=~/KWATCH_PID
+TOP=/opt/nowcast/kobe
 DAEMON=kwatcher
-DATADIR=/opt/nowcast/kobe/data/
-LOGFILE=/opt/nowcast/kobe/KWATCHLOG
-OPTIONS="-D -d -v -c /opt/nowcast/kobe/etc/conf -f $LOGFILE /opt/nowcast/kobe/bell $DATADIR"
-OPTIONS2="-d -v -c /opt/nowcast/kobe/etc/conf -f $LOGFILE /opt/nowcast/kobe/bell $DATADIR"
 
-case "$1" in
-  start)
-        echo -n "Removing data: "
-	rm -f $DATADIR/*
-	echo "done"
-        echo -n "Starting kwatcher: "
-	echo "$DAEMON $OPTIONS $*"
-	$DAEMON $OPTIONS $* >$PID_FILE
-        echo "done"
-	;;
-  start2)
-        echo -n "Removing data: "
-	rm -f $DATADIR/*
-	echo -n "done"
-        echo -n "Starting kwatcher: "
-	echo "$DAEMON $OPTIONS2 $*"
-	$DAEMON $OPTIONS2 $*
-        ;;
-  stop)
-        echo -n "Stopping kwatcher: "
-	kill -KILL `cat $PID_FILE`
-        echo "done"
-        ;;
-  *)
-        echo "Usage: jit-kobewatch start [<options>]" >&2
-        echo "       jit-kobewatch stop" >&2
-        ;;
-esac
-
-exit 0
+source $TOP/bin/jit-watch.sh

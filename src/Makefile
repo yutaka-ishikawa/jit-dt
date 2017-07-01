@@ -2,8 +2,9 @@
 # For K, -DUSE_LOCKF is required
 #
 CCFLAGS = -DUSE_LOCKF
-INSTTOP = /opt/nowcast
+#INSTTOP = /opt/nowcast
 #INSTTOP = $(HOME)/nowcast
+INSTTOP = /opt/nowcast/yitest2
 
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki
@@ -11,7 +12,8 @@ SERVER_CMDS2=http_daemon http_put
 CLIENT_CMDS=jit-kwatch jit-kobewatch kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
-	ktestgen.pl ltestgen.pl
+	ktestgen.pl ltestgen.pl \
+	jit-watch.sh jit-yiwatch jit-yi2watch
 CLIENT_CONFS=conf conf-test
 SERVER_CONFS=serverconf
 
