@@ -70,16 +70,6 @@ put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
     if (sz <= 0) {
 	return -1;
     }
-    DBG {
-	cc = write(1, "return= ", strlen("return= "));
-	if (cc != strlen("return= ")) {
-	    perror("Something wrong\n");
-	    exit(-1);
-	}
-	if (sz != write(1, combuf, sz)) {
-	    perror("write:"); exit(-1);
-	}
-    }
     return sz;
 }
 
