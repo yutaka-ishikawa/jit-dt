@@ -68,6 +68,7 @@ terminate(int num)
 	fprintf(stderr, "sftp_terminate\n");
 	sftp_terminate();
     }
+    LOG_PRINT("watch_and_transfer terminates\n");
     if (lntfyfile[0]) unlink(lntfyfile);
 }
 

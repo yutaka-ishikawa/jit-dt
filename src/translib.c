@@ -48,28 +48,70 @@ static int	sftpid = 0;
 static
 int setup_childpipe(int *to, int *from)
 {
-    int	cc;
+    int	cc, i;
     close(0); //close stdin
     cc = dup(to[0]); //connect pipe
     if (cc != 0) goto err_return;
     close(1); //close stdout
     cc = dup(from[1]); //connect pipe
     if (cc != 1) goto err_return;
+    /* other file descriptors are closed */
+    for (i = 2; i < 10; i++) {
+	close(i);
+    }
     return 0;
 err_return:
     return -1;
 }
 
+#define MAX(a, b)	((a) > (b) ? (a) : (b))
+
+int
+wait_rwfd(int rfd, int wfd)
+{
+    int		maxfd = 0;
+    fd_set	rdfds, wtfds, exceptfds;
+    struct timeval tout;
+
+    tout.tv_sec = 1; tout.tv_usec = 0;
+    FD_ZERO(&rdfds); FD_ZERO(&wtfds); FD_ZERO(&exceptfds);
+    if (rfd >= 0) {
+	FD_SET(rfd, &rdfds); FD_SET(rfd, &exceptfds);
+	maxfd = MAX(maxfd, rfd);
+    }
+    if (wfd >= 0) {
+	FD_SET(wfd, &wtfds); FD_SET(wfd, &exceptfds);
+	maxfd = MAX(maxfd, wfd);
+    }
+    if (select(maxfd + 1, &rdfds, &wtfds, &exceptfds, &tout) > 0
+	&& (FD_ISSET(rfd, &rdfds) || FD_ISSET(wfd, &wtfds))) {
+	return 0;
+    } else {
+	DBG { LOG_PRINT("put_cmd: error\n");}
+	return -1;
+    }
+}
+
 static int
 put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
 {
-    int		cc, sz;
+    int		sz = -1;
 
-    fprintf(wfp, fmt, a1, a2); fflush(wfp);
-    sz = read(rfd, combuf, BSIZE);
-    if (sz <= 0) {
+    DBG {
+      LOG_PRINT("put_cmd: going to write\n");
+    }
+    if (wait_rwfd(-1, fileno(wfp)) < 0) {
 	return -1;
     }
+    fprintf(wfp, fmt, a1, a2); fflush(wfp);
+    DBG {
+      LOG_PRINT("put_cmd: waitig\n");
+    }
+    if (wait_rwfd(rfd, -1) < 0) {
+	return -1;
+    }
+    memset(combuf, 0, BSIZE);
+    sz = read(rfd, combuf, BSIZE);
     return sz;
 }
 
