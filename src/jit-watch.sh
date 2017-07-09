@@ -12,7 +12,7 @@ OPTIONS2="-d -v -c $CONF_FILE -f $LOGFILE $BELL_DIR $DATA_DIR"
 case "$1" in
   start)
         echo -n "Removing data: "
-	rm -f $DATADIR/*
+	rm -f $DATA_DIR/*
 	echo "done"
         echo -n "Starting kwatcher: "
 	echo "$DAEMON $OPTIONS $*"
