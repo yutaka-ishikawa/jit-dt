@@ -67,13 +67,13 @@ err_return:
 #define MAX(a, b)	((a) > (b) ? (a) : (b))
 
 int
-wait_rwfd(int rfd, int wfd)
+wait_rwfd(int rfd, int wfd, int sec)
 {
     int		maxfd = 0;
     fd_set	rdfds, wtfds, exceptfds;
     struct timeval tout;
 
-    tout.tv_sec = 1; tout.tv_usec = 0;
+    tout.tv_sec = sec; tout.tv_usec = 0;
     FD_ZERO(&rdfds); FD_ZERO(&wtfds); FD_ZERO(&exceptfds);
     if (rfd >= 0) {
 	FD_SET(rfd, &rdfds); FD_SET(rfd, &exceptfds);
@@ -98,20 +98,23 @@ put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
     int		sz = -1;
 
     DBG {
-      LOG_PRINT("put_cmd: going to write\n");
+	LOG_PRINT("put_cmd: going to write: cmdformat=%s\n", fmt);
     }
-    if (wait_rwfd(-1, fileno(wfp)) < 0) {
+    if (wait_rwfd(-1, fileno(wfp), 0) < 0) {
 	return -1;
     }
     fprintf(wfp, fmt, a1, a2); fflush(wfp);
     DBG {
-      LOG_PRINT("put_cmd: waitig\n");
+	LOG_PRINT("put_cmd: waitig\n");
     }
-    if (wait_rwfd(rfd, -1) < 0) {
+    if (wait_rwfd(rfd, -1, 5) < 0) {
 	return -1;
     }
     memset(combuf, 0, BSIZE);
     sz = read(rfd, combuf, BSIZE);
+    DBG {
+	LOG_PRINT("put_cmd: return %d\n", sz);
+    }
     return sz;
 }
 
@@ -328,15 +331,15 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	if (cc < 0) goto die_return;
     } else {
 	put_cmd(wfp, rfd, "quit\n", NULL, NULL);
-	close(rfd); fclose(wfp);
 	waitpid(sftpid, &stat, 0);
+	close(rfd); fclose(wfp);
     }
     end = getTime();
     sec = duration(start, end);
     return sec;
 die_return:
-    close(rfd); fclose(wfp);
     waitpid(sftpid, &stat, 0);
+    close(rfd); fclose(wfp);
     isprocalive = 0;
     LOG_PRINT("sftp dies\n");
     return 0.0;
