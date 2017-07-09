@@ -233,6 +233,7 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     char	*lntfy, *rntfy;
     int		to_sftp[2], from_sftp[2];
     int		cc;
+    int		stat;
     struct timeval	start, end;
     double		sec;
 
@@ -283,7 +284,9 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	DBG {
 	    LOG_PRINT("rfd(%d) wfd(%d)\n", from_sftp[0], to_sftp[1]);
 	}
-	isprocalive = 1;
+	if (keepproc) {
+	    isprocalive = 1;
+	}
     }
     if (wfp == NULL) {
 	perror("Something wrong\n");
@@ -321,19 +324,20 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	*vrsnp = (*vrsnp + 1)%F_VERSION_M;
     }
     if (keepproc) {
-	cc= put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
+	cc = put_cmd(wfp, rfd, "pwd\n", NULL, NULL);
 	if (cc < 0) goto die_return;
     } else {
-	int	stat;
 	put_cmd(wfp, rfd, "quit\n", NULL, NULL);
 	close(rfd); fclose(wfp);
 	waitpid(sftpid, &stat, 0);
-	isprocalive = 0;
     }
     end = getTime();
     sec = duration(start, end);
     return sec;
 die_return:
+    close(rfd); fclose(wfp);
+    waitpid(sftpid, &stat, 0);
+    isprocalive = 0;
     LOG_PRINT("sftp dies\n");
     return 0.0;
 err_return:
