@@ -1,0 +1,5 @@
+#!/bin/bash
+TOP=/opt/nowcast/yitest
+DAEMON=kwatcher
+
+source $TOP/bin/jit-watch.sh
