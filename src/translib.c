@@ -56,7 +56,7 @@ int setup_childpipe(int *to, int *from)
     cc = dup(from[1]); //connect pipe
     if (cc != 1) goto err_return;
     /* other file descriptors are closed */
-    for (i = 2; i < 10; i++) {
+    for (i = 3; i < 10; i++) {
 	close(i);
     }
     return 0;
@@ -84,7 +84,9 @@ wait_rwfd(int rfd, int wfd, int sec)
 	maxfd = MAX(maxfd, wfd);
     }
     if (select(maxfd + 1, &rdfds, &wtfds, &exceptfds, &tout) > 0
-	&& (FD_ISSET(rfd, &rdfds) || FD_ISSET(wfd, &wtfds))) {
+	&&
+	((rfd >= 0 && FD_ISSET(rfd, &rdfds))
+	 || (wfd >= 0 && FD_ISSET(wfd, &wtfds)))) {
 	return 0;
     } else {
 	DBG { LOG_PRINT("put_cmd: error\n");}
@@ -100,14 +102,14 @@ put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
     DBG {
 	LOG_PRINT("put_cmd: going to write: cmdformat=%s\n", fmt);
     }
-    if (wait_rwfd(-1, fileno(wfp), 0) < 0) {
+    if (wait_rwfd(-1, fileno(wfp), 1) < 0) {
 	return -1;
     }
     fprintf(wfp, fmt, a1, a2); fflush(wfp);
     DBG {
 	LOG_PRINT("put_cmd: waitig\n");
     }
-    if (wait_rwfd(rfd, -1, 5) < 0) {
+    if (wait_rwfd(rfd, -1, 10) < 0) {
 	return -1;
     }
     memset(combuf, 0, BSIZE);
