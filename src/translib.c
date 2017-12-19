@@ -295,7 +295,8 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     }
     if (wfp == NULL) {
 	perror("Something wrong\n");
-	exit(-1);
+	LOG_PRINT("sftp might die because pipe cannot be opened\n");
+	return 0.0;
     }
     if (rpath) {
 	char	*idx, *base;

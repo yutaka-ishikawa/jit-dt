@@ -131,6 +131,14 @@ rescuefile(char *avpath, char *path, char *fname)
     return 0;
 }
 
+static
+int
+isanyfile(int dir)
+{
+    getwdir(dir);
+    return 0;
+}
+
 int
 mynotify(char *topdir, char *startdir,
 	 void (*func)(char*, void**), void **args, int flag)
@@ -185,8 +193,7 @@ restart:
 		perror("read");	exit(-1);
 	    }
 	    DBG {
-		fprintf(stderr, "*** new event for directory (%0x)***\n", iep->mask);
-		fprintf(stderr, "\t\t%s\n", iep->name);
+		fprintf(stderr, "*** new event for directory (%0x) name(%s)***\n", iep->mask, iep->name);
 	    }
 	    if (iep->mask&IN_IGNORED) goto skip; /* inotify_rm_watch issued */
 	    strcpy(avpath, getwdir(iep->wd));
@@ -209,13 +216,19 @@ restart:
 	    }
 	    if (IS_EXHAUST(curdir)) goto resetting;
 	    curdir = add_watch(ntfydir, avpath, IN_CREATE);
+	    /* setup curdir array */
 	    strcpy(getwdir(curdir), avpath);
 	    fformat(getwdir(curdir));
+	    cc = add_watch(ntfyfile, avpath, IN_CLOSE_WRITE|IN_MOVED_TO);
+	    /*
+	     * Make sure if file has not been created.
+	     * In case of some file creation, restarting watching* directories.
+	     */
+// not yet implemented	    if (isanyfile(curdir)) goto resetting;
 	    VMODE {
 		fprintf(stderr, "now watching directory %s, dirid(%d)\n",
 			getwdir(curdir), curdir);
 	    }
-	    cc = add_watch(ntfyfile, avpath, IN_CLOSE_WRITE|IN_MOVED_TO);
 	}
 	skip:
 	if (FD_ISSET(ntfyfile, &readfds)) {
