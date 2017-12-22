@@ -296,7 +296,7 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     if (wfp == NULL) {
 	perror("Something wrong\n");
 	LOG_PRINT("sftp might die because pipe cannot be opened\n");
-	return 0.0;
+	goto die_return;
     }
     if (rpath) {
 	char	*idx, *base;
@@ -342,7 +342,8 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     return sec;
 die_return:
     waitpid(sftpid, &stat, 0);
-    close(rfd); fclose(wfp);
+    close(rfd);
+    if (wfp != NULL) fclose(wfp);
     isprocalive = 0;
     LOG_PRINT("sftp dies\n");
     return 0.0;
