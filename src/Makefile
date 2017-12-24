@@ -31,15 +31,15 @@ INSTINCL = $(INSTTOP)/include
 INSTLIB =  $(INSTTOP)/lib
 INSTETC =  $(INSTTOP)/etc
 OBJS =	misclib.o regexplib.o translib.o jitclient.o jitkclient.o jitcclient.o \
-	inotifylib.o watch_and_transfer.o \
+	inotifylib2.o watch_and_transfer.o \
 	kwatcher.o  lwatcher.o transtest.o transtest2.o transgen.o
 OBJS2 = http_put.o http_daemon.o
 POBJS =  ptranstest.o ptranstest2.o pjitclient.o
 LIBS = libjitdt-k.a libjitdt-pk.a libjitdt-l.a libjitdt-pl.a
-KLIB = jitclient.o jitkclient.o inotifylib.o misclib.o regexplib.o
-PKLIB = pjitclient.o jitkclient.o inotifylib.o misclib.o
-LLIB = jitclient.o jitcclient.o inotifylib.o misclib.o regexplib.o
-PLLIB = pjitclient.o jitcclient.o inotifylib.o misclib.o
+KLIB = jitclient.o jitkclient.o inotifylib2.o misclib.o regexplib.o
+PKLIB = pjitclient.o jitkclient.o inotifylib2.o misclib.o
+LLIB = jitclient.o jitcclient.o inotifylib2.o misclib.o regexplib.o
+PLLIB = pjitclient.o jitcclient.o inotifylib2.o misclib.o
 CCFLAGS += -O3 -Wall -g -c 
 MPICCFLAGS += -DMPIENV $(CCFLAGS) $(FJCFLAGS)
 LDFLAGS_HTTP_DAEMON = \
@@ -100,7 +100,7 @@ http_daemon: http_daemon.o
 	$(CC) -o $@ $^ $(LDFLAGS_HTTP_DAEMON) 
 http_put: http_put.o
 	$(CC) -o $@ $^ $(LDFLAGS_HTTP_PUT) 
-watch_and_transfer: watch_and_transfer.o misclib.o translib.o inotifylib.o regexplib.o
+watch_and_transfer: watch_and_transfer.o misclib.o translib.o inotifylib2.o regexplib.o
 	$(CC) -o $@ $^ $(LDFLAGS_HTTP_PUT)
 kwatcher: kwatcher.o libjitdt-k.a
 	$(CC) -o $@ $^ $(LDFLAGS_CLIENT)

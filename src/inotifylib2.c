@@ -62,15 +62,14 @@ add_watch(int fd, const char *path, uint32_t mask)
 }
 
 static void
-reset_watch(int ntfydir, int ntfyfile)
+reset_watch(int ntfydir)
 {
     int		wd, i;
 
-    if (ntfydir == 0 || ntfyfile == 0) return;
+    if (ntfydir == 0) return;
     for (i = 0; i < MAX_KEEPDIR; i++) {
 	if ((wd = qrmdir[i]) > 0) {
 	    if (inotify_rm_watch(ntfydir, wd) < 0) perror("inotify_rm_watch");
-	    if (inotify_rm_watch(ntfyfile, wd) < 0) perror("inotify_rm_watch");
 	}
     }
     curqrmd = 0;
@@ -80,7 +79,7 @@ reset_watch(int ntfydir, int ntfyfile)
  * Actual removing watching directory is postponed in rm_watch
  */
 static void
-rm_watch(int wd, int ntfydir, int ntfyfile, int flag)
+rm_watch(int wd, int ntfydir, int flag)
 {
     int		dir;
     if ((dir = qrmdir[curqrmd]) > 0) {
@@ -89,7 +88,6 @@ rm_watch(int wd, int ntfydir, int ntfyfile, int flag)
 		    getwdir(dir), dir);  fflush(stderr);
 	}
 	if (inotify_rm_watch(ntfydir, dir) < 0) perror("inotify_rm_watch");
-	if (inotify_rm_watch(ntfyfile, dir) < 0) perror("inotify_rm_watch");
     }
     qrmdir[curqrmd] = wd;
     curqrmd = (curqrmd + 1) % MAX_KEEPDIR;
@@ -131,19 +129,12 @@ rescuefile(char *avpath, char *path, char *fname)
     return 0;
 }
 
-static
-int
-isanyfile(int dir)
-{
-    getwdir(dir);
-    return 0;
-}
 
 int
 mynotify(char *topdir, char *startdir,
 	 void (*func)(char*, void**), void **args, int flag)
 {
-    int			ntfydir, ntfyfile, nfds, curdir, cc;
+    int			ntfydir, nfds, curdir, cc;
     ssize_t		sz;
     struct stat		sbuf;
     struct inotify_event *iep = (struct inotify_event *) nevtbuf;
@@ -153,31 +144,29 @@ mynotify(char *topdir, char *startdir,
 		IN_CREATE, IN_CLOSE_WRITE);  fflush(stderr);
     }
 restart:
-    ntfydir = inotify_init();  ntfyfile = inotify_init();
-    if (ntfydir < 0 || ntfyfile < 0) {
+    ntfydir = inotify_init();
+    if (ntfydir < 0) {
 	perror("inotify_init:");
 	exit(-1);
     }
-    reset_watch(ntfydir, ntfyfile);
-    FD_ZERO(&readfds); FD_SET(ntfydir, &readfds); FD_SET(ntfyfile, &readfds);
-    nfds = ntfyfile + 1;
-    cc = add_watch(ntfydir, topdir, IN_CREATE);
+    reset_watch(ntfydir);
+    FD_ZERO(&readfds); FD_SET(ntfydir, &readfds);
+    nfds = ntfydir + 1;
+    cc = add_watch(ntfydir, topdir, IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
     strcpy(getwdir(cc), topdir);
     curdir = cc;
-    cc = add_watch(ntfyfile, topdir, IN_CLOSE_WRITE|IN_MOVED_TO);
     /* starting directory */
     if (startdir) {
 	char	*idx, *sp = startdir;
 	fformat(sp);
 	while ((idx = index(sp, '/'))) {
 	    *idx = 0;
-	    strcpy(avpath, getwdir(curdir));
-	    strcat(avpath, sp);
+	    strcpy(avpath, getwdir(curdir)); strcat(avpath, sp);
 	    DBG { fprintf(stderr, "DIR:%s\n", avpath);  fflush(stderr); }
-	    curdir = add_watch(ntfydir, avpath, IN_CREATE);
+	    curdir = add_watch(ntfydir, avpath,
+			       IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
 	    strcpy(getwdir(curdir), avpath);
 	    fformat(getwdir(curdir));
-	    cc = add_watch(ntfyfile, avpath, IN_CLOSE_WRITE|IN_MOVED_TO);
 	    sp = idx + 1;
 	}
     }
@@ -186,23 +175,21 @@ restart:
 		getwdir(curdir), curdir);  fflush(stderr);
     }
     while (select(nfds, &readfds, NULL, NULL, NULL) > 0) {
-	if (FD_ISSET(ntfydir, &readfds)) {
-	    /* a new directory might be created, IN_CREAT */
-	    /* if it is a new file, then skip */
-	    if ((sz = read(ntfydir, nevtbuf, BUFSIZE)) < 0) {
-		perror("read");	exit(-1);
-	    }
-	    DBG {
-		fprintf(stderr, "*** new event for directory (%0x) name(%s)***\n", iep->mask, iep->name);  fflush(stderr);
-	    }
-	    if (iep->mask&IN_IGNORED) goto skip; /* inotify_rm_watch issued */
-	    strcpy(avpath, getwdir(iep->wd));
-	    strcat(avpath, iep->name);
-	    if ((cc = stat(avpath, &sbuf)) != 0) {
-		DBG { fprintf(stderr, "directory ??? %s\n", avpath); }
-		goto skip;
-	    }
-	    if (!S_ISDIR(sbuf.st_mode)) goto next; /* not a directory */
+	if ((sz = read(ntfydir, nevtbuf, BUFSIZE)) < 0) {
+	    perror("read");	exit(-1);
+	}
+	DBG {
+	    fprintf(stderr, "*** new event for directory (%0x) name(%s)***\n",
+		    iep->mask, iep->name);  fflush(stderr);
+	}
+	if (iep->mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
+	strcpy(avpath, getwdir(iep->wd)); strcat(avpath, iep->name);
+	if ((cc = stat(avpath, &sbuf)) != 0) {
+	    fprintf(stderr, "Cannot stat %s\n", avpath);
+	    goto next;
+	}
+	if (S_ISDIR(sbuf.st_mode)) {
+	    /* a directory */
 	    DBG {
 		fprintf(stderr, "DIR: dirid(%d) name(%s) curdir(%d)\n",
 			iep->wd, iep->name, curdir);  fflush(stderr);
@@ -212,62 +199,54 @@ restart:
 		 * The upper level directory is created. This means
 		 * no more wating the current directory.
 		 */
-		rm_watch(curdir, ntfydir, ntfyfile, flag);
+		rm_watch(curdir, ntfydir, flag);
 	    }
 	    if (IS_EXHAUST(curdir)) goto resetting;
-	    curdir = add_watch(ntfydir, avpath, IN_CREATE);
+	    curdir = add_watch(ntfydir, avpath,
+			       IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
 	    /* setup curdir array */
 	    strcpy(getwdir(curdir), avpath);
 	    fformat(getwdir(curdir));
-	    cc = add_watch(ntfyfile, avpath, IN_CLOSE_WRITE|IN_MOVED_TO);
-	    /*
-	     * Make sure if file has not been created.
-	     * In case of some file creation, restarting watching* directories.
-	     */
-// not yet implemented	    if (isanyfile(curdir)) goto resetting;
 	    VMODE {
 		fprintf(stderr, "now watching directory %s, dirid(%d)\n",
 			getwdir(curdir), curdir);  fflush(stderr);
 	    }
-	}
-	skip:
-	if (FD_ISSET(ntfyfile, &readfds)) {
-	    /* a new/modified file is closed or moved, IN_CLOSE_WRITE */
-	    if ((sz = read(ntfyfile, nevtbuf, BUFSIZE)) < 0) {
-		perror("read");	exit(-1);
-	    }
+	} else { /* file */
 	    DBG {
-		fprintf(stderr, "*** new event for file (%0x)***\n", iep->mask);  fflush(stderr);
+		fprintf(stderr, "*** new event for file (%0x)***\n",
+			iep->mask);  fflush(stderr);
 	    }
-	    if (iep->mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
+	    /* checking if a file has been created */
+	    if (iep->mask & IN_CREATE) goto next;
 	    strcpy(avpath, getwdir(iep->wd));
 	    strcat(avpath, iep->name);
 	    if (iep->name[0] == '.') {
-                if ((cc = stat(avpath, &sbuf)) != 0) {
-		    /* rsync might create this file and rename it */
-		    DBG_VMODE {
-			fprintf(stderr, "%s disapears and rescue\n", iep->name);  fflush(stderr);
-		    }
-		    /* avpath will be reset */
-		    if (rescuefile(avpath, getwdir(iep->wd),iep->name) < 0) goto next;
-                } else {
+		if ((cc = stat(avpath, &sbuf)) == 0) {
 		    /* ignore */
 		    DBG {
-			fprintf(stderr, "ignore file: %s exists\n", iep->name);  fflush(stderr);
+			fprintf(stderr, "ignore file: %s exists\n",
+				iep->name);  fflush(stderr);
 		    } 
 		    goto next;
 		}
+		/* rsync might have created this file and renamed it */
+		DBG_VMODE {
+		    fprintf(stderr, "%s disapears and rescue\n",
+			    iep->name);  fflush(stderr);
+		}
+		/* avpath will be reset */
+		if (rescuefile(avpath,
+			       getwdir(iep->wd),iep->name) < 0) goto next;
 	    }
 	    func(avpath, args);
 	}
     next:
 	FD_ZERO(&readfds);
 	FD_SET(ntfydir, &readfds);
-	FD_SET(ntfyfile, &readfds);
     }
     return 0;
 resetting:
-    close(ntfydir); close(ntfyfile);
+    close(ntfydir);
     /* startdir is newly defined using the current avpath */
     strcpy(tmppath, &avpath[strlen(topdir)]);
     startdir = tmppath;
