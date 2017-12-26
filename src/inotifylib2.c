@@ -184,6 +184,10 @@ restart:
 	}
 	if (iep->mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
 	strcpy(avpath, getwdir(iep->wd)); strcat(avpath, iep->name);
+	if ((cc = stat(avpath, &sbuf)) != 0) {
+	    DBG { fprintf(stderr, "disapper %s\n", avpath); fflush(stderr); }
+	    goto next;
+	}
 	if (S_ISDIR(sbuf.st_mode)) {
 	    if (!(iep->mask & IN_CREATE)) goto next;
 	    /* a directory */
