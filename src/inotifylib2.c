@@ -18,6 +18,7 @@
 #define DBG		if (flag&MYNOTIFY_DEBUG)
 #define VMODE		if (flag&MYNOTIFY_VERBOSE)
 #define DBG_VMODE	if (flag&(MYNOTIFY_DEBUG|MYNOTIFY_DEBUG))
+#define EVENTBUFSIZE	(sizeof(struct inotify_event)+NAME_MAX+1)
 #define MAX_DIRS	(24*60*2+1)
 #define MAX_KEEPDIR	4
 #define PATH_WATCH	"./"
@@ -25,11 +26,10 @@
 int	vflag;
 int	dflag;
 
-struct inotify_event evtbuf;
+char	evtbuf[EVENTBUFSIZE];
 fd_set	readfds;
 int	curdir;
 char	wdirs[MAX_DIRS][PATH_MAX];
-char	evtname[PATH_MAX];
 char	avpath[PATH_MAX];
 char	tmppath[PATH_MAX];
 int	qrmdir[MAX_KEEPDIR];
@@ -172,33 +172,35 @@ restart:
 		getwdir(curdir), curdir);  fflush(stderr);
     }
     while (select(nfds, &readfds, NULL, NULL, NULL) > 0) {
+	struct inotify_event	*iep = (struct inotify_event*) evtbuf;
 	ssize_t		sz;
 	struct stat	sbuf;
 
-	if ((sz = read(ntfydir, &evtbuf, sizeof(struct inotify_event))) < 0) {
+	if ((sz = read(ntfydir, evtbuf, EVENTBUFSIZE)) < 0) {
 	    perror("read inotify_event"); exit(-1);
 	}
-	if ((sz = read(ntfydir, evtname, evtbuf.len)) != evtbuf.len) {
-	    perror("read name from inotify_event"); exit(-1);
+	VMODE {
+	    fprintf(stderr, "read size(%ld) inotify size(%ld)\n",
+		    sz, sizeof(struct inotify_event)); fflush(stderr);
 	}
 	DBG {
 	    fprintf(stderr, "*** new event for directory (%0x) name(%s) ",
-		    evtbuf.mask, evtname);  fflush(stderr);
+		    iep->mask, iep->name);  fflush(stderr);
 	}
-	if (evtbuf.mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
-	strcpy(avpath, getwdir(evtbuf.wd)); strcat(avpath, evtname);
+	if (iep->mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
+	strcpy(avpath, getwdir(iep->wd)); strcat(avpath, iep->name);
 	if ((cc = stat(avpath, &sbuf)) != 0) {
 	    DBG { fprintf(stderr, "disapper %s\n", avpath); fflush(stderr); }
 	    goto next;
 	}
 	if (S_ISDIR(sbuf.st_mode)) {
-	    if (!(evtbuf.mask & IN_CREATE)) goto next;
+	    if (!(iep->mask & IN_CREATE)) goto next;
 	    /* a directory */
 	    DBG {
 		fprintf(stderr, "DIR: dirid(%d) curdir(%d)\n",
-			evtbuf.wd, curdir);  fflush(stderr);
+			iep->wd, curdir);  fflush(stderr);
 	    }
-	    if (evtbuf.wd != curdir) {
+	    if (iep->wd != curdir) {
 		/*
 		 * The upper level directory is created. This means
 		 * no more wating the current directory.
@@ -220,8 +222,8 @@ restart:
 		fprintf(stderr, "FILE\n");  fflush(stderr);
 	    }
 	    /* checking if a file has been closed or moved */
-	    if (!(evtbuf.mask & (IN_CLOSE_WRITE|IN_MOVED_TO))) goto next;
-	    if (evtname[0] == '.') {/* might be temoraly file for rsync */
+	    if (!(iep->mask & (IN_CLOSE_WRITE|IN_MOVED_TO))) goto next;
+	    if (iep->name[0] == '.') {/* might be temoraly file for rsync */
 		goto next;
 	    }
 	    func(avpath, args);
