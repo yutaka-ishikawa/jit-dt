@@ -217,28 +217,13 @@ restart:
 		fprintf(stderr, "*** new event for file (%0x)***\n",
 			iep->mask);  fflush(stderr);
 	    }
-	    /* checking if a file has been closed */
-	    if (!(iep->mask & IN_CLOSE_WRITE)) goto next;
+	    /* checking if a file has been closed or moved */
+	    if (!(iep->mask & (IN_CLOSE_WRITE|IN_MOVED_TO))) goto next;
+	    if (iep->name[0] == '.') {/* might be temoraly file for rsync */
+		goto next;
+	    }
 	    strcpy(avpath, getwdir(iep->wd));
 	    strcat(avpath, iep->name);
-	    if (iep->name[0] == '.') {
-		if ((cc = stat(avpath, &sbuf)) == 0) {
-		    /* ignore */
-		    DBG {
-			fprintf(stderr, "ignore file: %s exists\n",
-				iep->name);  fflush(stderr);
-		    } 
-		    goto next;
-		}
-		/* rsync might have created this file and renamed it */
-		DBG_VMODE {
-		    fprintf(stderr, "%s disapears and rescue\n",
-			    iep->name);  fflush(stderr);
-		}
-		/* avpath will be reset */
-		if (rescuefile(avpath,
-			       getwdir(iep->wd),iep->name) < 0) goto next;
-	    }
 	    func(avpath, args);
 	}
     next:
