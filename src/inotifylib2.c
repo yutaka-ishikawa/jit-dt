@@ -179,21 +179,17 @@ restart:
 	    perror("read");	exit(-1);
 	}
 	DBG {
-	    fprintf(stderr, "*** new event for directory (%0x) name(%s)***\n",
+	    fprintf(stderr, "*** new event for directory (%0x) name(%s) ",
 		    iep->mask, iep->name);  fflush(stderr);
 	}
 	if (iep->mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
 	strcpy(avpath, getwdir(iep->wd)); strcat(avpath, iep->name);
-	if ((cc = stat(avpath, &sbuf)) != 0) {
-	    fprintf(stderr, "Cannot stat %s\n", avpath);
-	    goto next;
-	}
 	if (S_ISDIR(sbuf.st_mode)) {
 	    if (!(iep->mask & IN_CREATE)) goto next;
 	    /* a directory */
 	    DBG {
-		fprintf(stderr, "DIR: dirid(%d) name(%s) curdir(%d)\n",
-			iep->wd, iep->name, curdir);  fflush(stderr);
+		fprintf(stderr, "DIR: dirid(%d) curdir(%d)\n",
+			iep->wd, curdir);  fflush(stderr);
 	    }
 	    if (iep->wd != curdir) {
 		/*
@@ -214,16 +210,13 @@ restart:
 	    }
 	} else { /* file */
 	    DBG {
-		fprintf(stderr, "*** new event for file (%0x)***\n",
-			iep->mask);  fflush(stderr);
+		fprintf(stderr, "FILE\n");  fflush(stderr);
 	    }
 	    /* checking if a file has been closed or moved */
 	    if (!(iep->mask & (IN_CLOSE_WRITE|IN_MOVED_TO))) goto next;
 	    if (iep->name[0] == '.') {/* might be temoraly file for rsync */
 		goto next;
 	    }
-	    strcpy(avpath, getwdir(iep->wd));
-	    strcat(avpath, iep->name);
 	    func(avpath, args);
 	}
     next:
