@@ -223,8 +223,8 @@ restart:
 		if (iep->name[0] == '.') {/* might be temoraly file for rsync */
 		    continue;
 		}
+		func(avpath, args);
 	    }
-	    func(avpath, args);
 	}
 	FD_ZERO(&readfds);
 	FD_SET(ntfydir, &readfds);
