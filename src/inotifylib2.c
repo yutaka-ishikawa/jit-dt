@@ -189,6 +189,7 @@ restart:
 	    goto next;
 	}
 	if (S_ISDIR(sbuf.st_mode)) {
+	    if (!(iep->mask & IN_CREATE)) goto next;
 	    /* a directory */
 	    DBG {
 		fprintf(stderr, "DIR: dirid(%d) name(%s) curdir(%d)\n",
@@ -216,8 +217,8 @@ restart:
 		fprintf(stderr, "*** new event for file (%0x)***\n",
 			iep->mask);  fflush(stderr);
 	    }
-	    /* checking if a file has been created */
-	    if (iep->mask & IN_CREATE) goto next;
+	    /* checking if a file has been closed */
+	    if (!(iep->mask & IN_CLOSE_WRITE)) goto next;
 	    strcpy(avpath, getwdir(iep->wd));
 	    strcat(avpath, iep->name);
 	    if (iep->name[0] == '.') {
