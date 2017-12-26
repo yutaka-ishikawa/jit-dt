@@ -173,64 +173,59 @@ restart:
     }
     while (select(nfds, &readfds, NULL, NULL, NULL) > 0) {
 	struct inotify_event	*iep = (struct inotify_event*) evtbuf;
-	ssize_t		sz;
+	ssize_t		sz, len;
 	struct stat	sbuf;
 
 	if ((sz = read(ntfydir, evtbuf, EVENTBUFSIZE)) < 0) {
 	    perror("read inotify_event"); exit(-1);
 	}
-	VMODE {
-	    fprintf(stderr,
-		    "read size(%ld) inotify size(%ld) name(%s)\n",
-		    sz, sizeof(struct inotify_event) + iep->len,
-		    iep->name); fflush(stderr);
-	}
-	DBG {
-	    fprintf(stderr, "*** new event for directory (%0x) name(%s) ",
-		    iep->mask, iep->name);  fflush(stderr);
-	}
-	if (iep->mask&IN_IGNORED) goto next; /* inotify_rm_watch issued */
-	strcpy(avpath, getwdir(iep->wd)); strcat(avpath, iep->name);
-	if ((cc = stat(avpath, &sbuf)) != 0) {
-	    DBG { fprintf(stderr, "disapper %s\n", avpath); fflush(stderr); }
-	    goto next;
-	}
-	if (S_ISDIR(sbuf.st_mode)) {
-	    if (!(iep->mask & IN_CREATE)) goto next;
-	    /* a directory */
+	for (len = 0; len < sz; len += sizeof(struct inotify_event)+iep->len) {
 	    DBG {
-		fprintf(stderr, "DIR: dirid(%d) curdir(%d)\n",
-			iep->wd, curdir);  fflush(stderr);
+		fprintf(stderr, "*** new event for directory (%0x) name(%s) ",
+			iep->mask, iep->name);  fflush(stderr);
 	    }
-	    if (iep->wd != curdir) {
-		/*
-		 * The upper level directory is created. This means
-		 * no more wating the current directory.
-		 */
-		rm_watch(curdir, ntfydir, flag);
+	    if (iep->mask&IN_IGNORED) continue; /* inotify_rm_watch issued */
+	    strcpy(avpath, getwdir(iep->wd)); strcat(avpath, iep->name);
+	    if ((cc = stat(avpath, &sbuf)) != 0) {
+		DBG { fprintf(stderr, "disapper %s\n", avpath);fflush(stderr); }
+		continue;
 	    }
-	    if (IS_EXHAUST(curdir)) goto resetting;
-	    curdir = add_watch(ntfydir, avpath,
-			       IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
-	    /* setup curdir array */
-	    strcpy(getwdir(curdir), avpath);
-	    fformat(getwdir(curdir));
-	    VMODE {
-		fprintf(stderr, "now watching directory %s, dirid(%d)\n",
-			getwdir(curdir), curdir);  fflush(stderr);
-	    }
-	} else { /* file */
-	    DBG {
-		fprintf(stderr, "FILE\n");  fflush(stderr);
-	    }
-	    /* checking if a file has been closed or moved */
-	    if (!(iep->mask & (IN_CLOSE_WRITE|IN_MOVED_TO))) goto next;
-	    if (iep->name[0] == '.') {/* might be temoraly file for rsync */
-		goto next;
+	    if (S_ISDIR(sbuf.st_mode)) {
+		if (!(iep->mask & IN_CREATE)) continue;
+		/* a directory */
+		DBG {
+		    fprintf(stderr, "DIR: dirid(%d) curdir(%d)\n",
+			    iep->wd, curdir);  fflush(stderr);
+		}
+		if (iep->wd != curdir) {
+		    /*
+		     * The upper level directory is created. This means
+		     * no more wating the current directory.
+		     */
+		    rm_watch(curdir, ntfydir, flag);
+		}
+		if (IS_EXHAUST(curdir)) goto resetting;
+		curdir = add_watch(ntfydir, avpath,
+				   IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
+		/* setup curdir array */
+		strcpy(getwdir(curdir), avpath);
+		fformat(getwdir(curdir));
+		VMODE {
+		    fprintf(stderr, "now watching directory %s, dirid(%d)\n",
+			    getwdir(curdir), curdir);  fflush(stderr);
+		}
+	    } else { /* file */
+		DBG {
+		    fprintf(stderr, "FILE\n");  fflush(stderr);
+		}
+		/* checking if a file has been closed or moved */
+		if (!(iep->mask & (IN_CLOSE_WRITE|IN_MOVED_TO))) continue;
+		if (iep->name[0] == '.') {/* might be temoraly file for rsync */
+		    continue;
+		}
 	    }
 	    func(avpath, args);
 	}
-    next:
 	FD_ZERO(&readfds);
 	FD_SET(ntfydir, &readfds);
     }
