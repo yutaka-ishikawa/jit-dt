@@ -224,9 +224,6 @@ restart:
 		    continue;
 		}
 	    }
-	    VMODE {
-		fprintf(stderr, "size(%ld): ", sbuf.st_size); fflush(stderr);
-	    }
 	    func(avpath, args);
 	}
 	FD_ZERO(&readfds);

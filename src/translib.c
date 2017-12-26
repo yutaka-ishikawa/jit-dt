@@ -238,7 +238,7 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
     char	*lntfy, *rntfy;
     int		to_sftp[2], from_sftp[2];
     int		cc;
-    int		stat;
+    int		status;
     struct timeval	start, end;
     double		sec;
 
@@ -307,6 +307,14 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	    /* last '/' means a directory */
 	    strcat(fnbuf, base);
 	} /* including a file name */
+	VMODE {
+	    struct stat		sbuf;
+	    if ((cc = stat(fname, &sbuf)) != 0) {
+		LOG_PRINT("Cannot find file: %s", fname); fflush(stderr);
+	    } else {
+		LOG_PRINT("size(%ld): ", sbuf.st_size); fflush(stderr);
+	    }
+	}
 	DBG { LOG_PRINT("put %s %s\n", fname, fnbuf); }
 	cc = put_cmd(wfp, rfd, "put %s %s\n", fname, fnbuf);
     } else {
@@ -334,14 +342,14 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	if (cc < 0) goto die_return;
     } else {
 	put_cmd(wfp, rfd, "quit\n", NULL, NULL);
-	waitpid(sftpid, &stat, 0);
+	waitpid(sftpid, &status, 0);
 	close(rfd); fclose(wfp);
     }
     end = getTime();
     sec = duration(start, end);
     return sec;
 die_return:
-    waitpid(sftpid, &stat, 0);
+    waitpid(sftpid, &status, 0);
     close(rfd);
     if (wfp != NULL) fclose(wfp);
     isprocalive = 0;
