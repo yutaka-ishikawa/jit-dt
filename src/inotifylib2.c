@@ -180,8 +180,10 @@ restart:
 	    perror("read inotify_event"); exit(-1);
 	}
 	VMODE {
-	    fprintf(stderr, "read size(%ld) inotify size(%ld)\n",
-		    sz, sizeof(struct inotify_event)); fflush(stderr);
+	    fprintf(stderr,
+		    "read size(%ld) inotify size(%ld) name(%s)\n",
+		    sz, sizeof(struct inotify_event) + iep->len,
+		    iep->name); fflush(stderr);
 	}
 	DBG {
 	    fprintf(stderr, "*** new event for directory (%0x) name(%s) ",
