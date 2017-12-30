@@ -23,6 +23,7 @@
 #define TKN_KEY_PAT	11
 #define TKN_KEY_DAT	12
 #define TKN_KEY_TYP	13
+#define TKN_KEY_THR	14
 #define IS_ALPHA(ch)	(isalpha(ch) || ch == '-' || ch == '_')
 
 #define NMATCH	10
@@ -43,11 +44,12 @@ struct conf {
     char	c_type[STR_LEN];
     char	c_date[STR_LEN];
     char	c_fnam[STR_LEN];
+    char	c_thrh[STR_LEN];
     regex_t	c_preg;
 };
 
 static char	*key[] = {
-    "region", "sync", "fname", "pattern", "date", "type", 0 };
+    "region", "sync", "fname", "pattern", "date", "type", "threshold", 0 };
 static int		line;
 static struct conf	conf[MAX_CONF+1];
 static char		synctype[MAX_SYNCFILES][STR_LEN];
@@ -176,6 +178,8 @@ readconf(char *fname)
 		    PARSE_KEYSTRING(type);	break;
 		case TKN_KEY_FNM:
 		    PARSE_KEYSTRING(fnam);	break;
+		case TKN_KEY_THR:
+		    PARSE_KEYSTRING(thrh);	break;
 		default:
 		    goto err1;
 		}
@@ -259,7 +263,7 @@ matchedcopy(char *dst, char *fmt, char *pattern, regmatch_t *pmatch)
 }
 
 int
-regex_match(char *pattern, char *date, char *type, char *fnam)
+regex_match(char *pattern, char *date, char *type, char *fnam, char *thrh)
 {
     int		cc;
     struct conf	*cnfp;
@@ -281,6 +285,7 @@ regex_match(char *pattern, char *date, char *type, char *fnam)
     if (date) matchedcopy(date, cnfp->c_date, pattern, pmatch);
     if (type) matchedcopy(type, cnfp->c_type, pattern, pmatch);
     if (fnam) matchedcopy(fnam, cnfp->c_fnam, pattern, pmatch);
+    if (thrh) matchedcopy(thrh, cnfp->c_thrh, pattern, pmatch);
     return 1;
 }
 

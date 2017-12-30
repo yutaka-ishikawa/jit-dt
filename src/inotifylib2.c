@@ -33,6 +33,7 @@ fd_set	readfds;
 int	curdir;
 char	wdirs[MAX_DIRS][PATH_MAX];
 char	avpath[PATH_MAX];
+char	prevpath[PATH_MAX];
 char	tmppath[PATH_MAX];
 int	qrmdir[MAX_KEEPDIR];
 int	curqrmd;
@@ -136,7 +137,7 @@ debug(char *path)
 
 int
 mynotify(char *topdir, char *startdir,
-	 void (*func)(char*, void**), void **args, int flag)
+	 int (*func)(char*, void**), void **args, int flag)
 {
     int			ntfydir, nfds, curdir, cc;
 
@@ -227,7 +228,16 @@ restart:
 		if (iep->name[0] == '.') {/* might be temoraly file for rsync */
 		    continue;
 		}
-		func(avpath, args);
+		if (!strcmp(prevpath, avpath)) {
+		    /* the same file has been transfered */
+		    continue;
+		}
+		cc = func(avpath, args);
+		if (cc == 1) { /* record this path */
+		    strcpy(prevpath, avpath);
+		} else {
+		    prevpath[0] = 0;
+		}
 	    }
 	}
 	FD_ZERO(&readfds);

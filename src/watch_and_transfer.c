@@ -10,6 +10,7 @@
  *			yutaka.ishikawa@riken.jp
  */
 #include <limits.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
 #include <stdio.h>
@@ -41,6 +42,7 @@ static char	lntfyfile[PATH_MAX] = "/tmp/ditready";
 static char	rntfydir[PATH_MAX] = "/tmp/bell/";
 static char	combuf[PATH_MAX + 128];
 static char	lognmbase[PATH_MAX] = "/tmp/JITDTLOG";
+static char	thr[128];
 
 static void
 usage(char **argv)
@@ -74,11 +76,14 @@ terminate(int num)
 
 
 
-static void
+static int
 transfer(char *fname, void **args)
 {
     double	(*transfunc)(char*, char*, char*, void**);
     char	*host_name, *remote_path;
+    int		cc;
+    ssize_t	sz;
+    struct stat	sbuf;
     void	*opt[5];
 
     transfunc = (double (*)(char*, char*, char*, void**)) args[0];
@@ -94,11 +99,24 @@ transfer(char *fname, void **args)
 		(int) (long long) opt[0], remote_path,
 		(char*) opt[1], (char*) opt[2]);
     }
-    if (regex_match(fname, 0, 0, 0) < 0) {
+    thr[0] = 0;
+    if (regex_match(fname, 0, 0, 0, thr) < 0) {
 	DBG {
 	    LOG_PRINT("Skipping %s\n", fname);
 	}
-	return;
+	return 0;
+    }
+    sz = atoll(thr);
+    if ((cc = stat(fname, &sbuf)) != 0) {
+	LOG_PRINT("Cannot find file: %s\n", fname);
+    }
+    if (sz > 0 && sbuf.st_size < sz) {
+	/* skipping transfer */
+	DBG {
+	    LOG_PRINT("Skipping %s because of short file size (%ld < %ld\n",
+		      fname, sbuf.st_size, sz);
+	}
+	return 0;
     }
     VMODE {
 	double	sec;
@@ -108,11 +126,13 @@ transfer(char *fname, void **args)
 	mygettime(&time, &tzone);
 	sec = transfunc(host_name, remote_path, fname, opt);
 	timeconv(&time, timefmtbuf);
-	LOG_PRINT("%s, %s, %f\n", timefmtbuf, basename(fname), sec);
+	LOG_PRINT("%s, %s (%ld), %f\n",
+		  timefmtbuf, basename(fname), sbuf.st_size, sec);
     } else {
 	transfunc(host_name, remote_path, fname, opt);
     }
     logfupdate();
+    return 1;
 }
 
 static void

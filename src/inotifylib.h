@@ -6,4 +6,4 @@
 #define MYNOTIFY_VERBOSE	2
 
 extern int mynotify(char *topdir, char *startdir,
-		    void (*fnc)(char*, void**), void **, int flg);
+		    int (*fnc)(char*, void**), void **, int flg);

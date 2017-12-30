@@ -298,14 +298,6 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	LOG_PRINT("sftp might die because pipe cannot be opened\n");
 	goto die_return;
     }
-    VMODE {
-	struct stat		sbuf;
-	if ((cc = stat(fname, &sbuf)) != 0) {
-	    LOG_PRINT("Cannot find file: %s", fname);
-	} else {
-	    LOG_PRINT("size(%ld): ", sbuf.st_size);
-	}
-    }
     if (rpath) {
 	char	*idx, *base;
 	strcpy(combuf, fname);
