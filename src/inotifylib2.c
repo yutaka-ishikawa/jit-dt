@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <libgen.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -119,13 +120,13 @@ debug(char *path)
     static int	gen = 0;
     int		cc;
 
-    sprintf(to, "%s-%d", path, gen);
+    sprintf(to, "%s-%d", basename(path), gen);
     sprintf(cmd, "cp %s /tmp/%s", path, to);
     cc = system(cmd);
     if (cc == 0) {
 	fprintf(stderr, "cmd:%s has been succecfully executed\n", cmd);
     } else {
-	fprintf(stderr, "cmd:%s result = %dx\n", cmd, cc);
+	fprintf(stderr, "cmd:%s err result = %x\n", cmd, cc);
     }
     gen++;
 }
