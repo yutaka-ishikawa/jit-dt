@@ -89,7 +89,7 @@ wait_rwfd(int rfd, int wfd, int sec)
 	 || (wfd >= 0 && FD_ISSET(wfd, &wtfds)))) {
 	return 0;
     } else {
-	DBG { LOG_PRINT("put_cmd: error\n");}
+	DBG { LOG_PRINT("wait_rwfd: error\n");}
 	return -1;
     }
 }
@@ -100,14 +100,14 @@ put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
     int		sz = -1;
 
     DBG {
-	LOG_PRINT("put_cmd: going to write: cmdformat=%s\n", fmt);
+	LOG_PRINT("put_cmd: going to write: cmdformat=%s ... ", fmt);
     }
     if (wait_rwfd(-1, fileno(wfp), 1) < 0) {
 	return -1;
     }
     fprintf(wfp, fmt, a1, a2); fflush(wfp);
     DBG {
-	LOG_PRINT("put_cmd: waitig\n");
+	LOG_PRINT("waitig... ");
     }
     if (wait_rwfd(rfd, -1, 10) < 0) {
 	return -1;
@@ -115,7 +115,7 @@ put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
     memset(combuf, 0, BSIZE);
     sz = read(rfd, combuf, BSIZE);
     DBG {
-	LOG_PRINT("put_cmd: return %d\n", sz);
+	LOG_PRINT(" return %d\n", sz);
     }
     return sz;
 }
@@ -294,9 +294,17 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	}
     }
     if (wfp == NULL) {
-	perror("Something wrong\n");
+	perror("Something wrong. ");
 	LOG_PRINT("sftp might die because pipe cannot be opened\n");
 	goto die_return;
+    }
+    VMODE {
+	struct stat		sbuf;
+	if ((cc = stat(fname, &sbuf)) != 0) {
+	    LOG_PRINT("Cannot find file: %s", fname);
+	} else {
+	    LOG_PRINT("size(%ld): ", sbuf.st_size);
+	}
     }
     if (rpath) {
 	char	*idx, *base;
@@ -307,14 +315,6 @@ sftp_put(char *host, char *rpath, char *fname, void **opt)
 	    /* last '/' means a directory */
 	    strcat(fnbuf, base);
 	} /* including a file name */
-	VMODE {
-	    struct stat		sbuf;
-	    if ((cc = stat(fname, &sbuf)) != 0) {
-		LOG_PRINT("Cannot find file: %s", fname); fflush(stderr);
-	    } else {
-		LOG_PRINT("size(%ld): ", sbuf.st_size); fflush(stderr);
-	    }
-	}
 	DBG { LOG_PRINT("put %s %s\n", fname, fnbuf); }
 	cc = put_cmd(wfp, rfd, "put %s %s\n", fname, fnbuf);
     } else {

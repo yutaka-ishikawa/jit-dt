@@ -1,5 +1,6 @@
 /*
  *	inotify library separated from jit-transfer
+ *	24/12/2017 two inotify events are merged
  *	16/08/2016 Written by Yutaka Ishikawa, RIKEN AICS
  *			yutaka.ishikawa@riken.jp
  */
@@ -109,24 +110,24 @@ rmtails(char *name)
     }
 }
 
-/* file name is something like
- * ".kobe_20160919142330_A08_pawr_vr.dat.X1X9S3"
- * removing the first '.' and the last string ".X1X9S3"
- */
-int
-rescuefile(char *avpath, char *path, char *fname)
+
+void
+debug(char *path)
 {
-    int	cc;
-    struct stat		sbuf;
-    rmtails(&fname[1]);
-    strcpy(avpath, path);
-    strcat(avpath, &fname[1]);
-    if ((cc = stat(avpath, &sbuf)) != 0) {
-	fprintf(stderr,
-		"Warning: cannot find file: %s\n", avpath);  fflush(stderr);
-	return -1;
+    static char	to[PATH_MAX];
+    static char	cmd[PATH_MAX+256];
+    static int	gen = 0;
+    int		cc;
+
+    sprintf(to, "%s-%d", path, gen);
+    sprintf(cmd, "cp %s /tmp/%s", path, to);
+    cc = system(cmd);
+    if (cc == 0) {
+	fprintf(stderr, "cmd:%s has been succecfully executed\n", cmd);
+    } else {
+	fprintf(stderr, "cmd:%s result = %dx\n", cmd, cc);
     }
-    return 0;
+    gen++;
 }
 
 
@@ -223,6 +224,7 @@ restart:
 		if (iep->name[0] == '.') {/* might be temoraly file for rsync */
 		    continue;
 		}
+		debug(avpath);
 		func(avpath, args);
 	    }
 	}
