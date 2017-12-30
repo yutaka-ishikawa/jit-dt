@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <libgen.h>
+//#include <libgen.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -112,6 +112,7 @@ rmtails(char *name)
 }
 
 
+#if 0
 void
 debug(char *path)
 {
@@ -130,6 +131,7 @@ debug(char *path)
     }
     gen++;
 }
+#endif
 
 
 int
@@ -225,7 +227,6 @@ restart:
 		if (iep->name[0] == '.') {/* might be temoraly file for rsync */
 		    continue;
 		}
-		debug(avpath);
 		func(avpath, args);
 	    }
 	}
