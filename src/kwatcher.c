@@ -61,7 +61,7 @@ mkhist(char *path, int *entsize)
     long long	dt;
     char	*cp;
 
-    if (regex_match(path, date, type, fnam) < 0) {
+    if (regex_match(path, date, type, fnam, NULL) < 0) {
 	LOG_PRINT("Cannot parse the file name (%s). skipping\n", path);
 	return NULL;
     }
@@ -152,7 +152,7 @@ nofilled:
     return NULL;
 }
 
-void
+int
 transfer(char *fname, void **args)
 {
     char	*outdir;
@@ -168,11 +168,11 @@ transfer(char *fname, void **args)
     }
     if ((fd = open(fname, O_RDONLY)) < 0) {
 	LOG_PRINT("Cannot open file %s\n", fname);
-	return;
+	return 0;
     }
     if ((sz = read(fd, namebuf, PATH_MAX)) < 0) {
 	LOG_PRINT("Cannot read file %s\n", fname);
-	return;
+	return 0;
     }
     if (close(fd) < 0) {
 	LOG_PRINT("Close error: %s\n", fname);
@@ -182,7 +182,7 @@ transfer(char *fname, void **args)
     VMODE {
 	LOG_PRINT("kwatcher: adding %s\n", namebuf);
     }
-    if ((files = mkhist(namebuf, &entries)) == NULL) return;
+    if ((files = mkhist(namebuf, &entries)) == NULL) return 0;
     VMODE {
 	LOG_PRINT("kwatcher: available %lld\n", files->date);
     }
@@ -199,6 +199,7 @@ transfer(char *fname, void **args)
     DBG {
 	LOG_PRINT("new lock file(%s)\n", locked_name(newlckfd));
     }
+    return 0;
 }
 
 int

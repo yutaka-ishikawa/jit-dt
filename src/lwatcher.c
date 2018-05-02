@@ -83,7 +83,7 @@ init_transfer(char *host, int port, struct sockaddr_in *saddrp)
     return sock;
 }
 
-void
+int
 watcher(char *fname, void **args)
 {
     static char	date[128], type[128];
@@ -94,13 +94,14 @@ watcher(char *fname, void **args)
     VMODE {
 	fprintf(stderr, "%s arrives\n", fname); fflush(stderr);
     }
-    if (regex_match(fname, date, type, 0) < 0) {
+    if (regex_match(fname, date, type, NULL, NULL) < 0) {
 	fprintf(stderr, "Cannot parse the file name. skipping\n");
-	return;
+	return 0;
     }
     dt = atoll(date);
     tp = sync_entry(type);
     histput(fname, dt, tp);
+    return 0;
 }
 
 
