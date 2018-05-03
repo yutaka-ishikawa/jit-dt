@@ -43,6 +43,7 @@ LIBS = libjitdt-k.a libjitdt-pk.a libjitdt-l.a libjitdt-pl.a
 KLIB = jitclient.o jitkclient.o inotifylib2.o misclib.o regexplib.o
 K-KLIB = k-jitclient.o k-jitkclient.o k-inotifylib2.o k-misclib.o k-regexplib.o
 PKLIB = pjitclient.o jitkclient.o inotifylib2.o misclib.o
+K-PKLIB = pjitclient.o k-jitkclient.o k-inotifylib2.o k-misclib.o
 LLIB = jitclient.o jitcclient.o inotifylib2.o misclib.o regexplib.o
 PLLIB = pjitclient.o jitcclient.o inotifylib2.o misclib.o
 CCFLAGS += -O3 -Wall -g -c $(FJCFLAGS)
@@ -80,6 +81,9 @@ libjitdt-pl.a: $(PLLIB)
 	ar rs $@ $^
 libk-jitdt-k.a: $(K-KLIB)
 	ar rs $@ $^
+libk-jitdt-pk.a: $(K-PKLIB)
+	ar rs $@ $^
+
 install: install_server install_client install_lib
 install_server: server
 	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
@@ -116,10 +120,10 @@ lwatcher: lwatcher.o libjitdt-l.a
 	$(CC) -o $@ $^ $(LDFLAGS_CLIENT) -lpthread
 transtest: transtest.o libjitdt-k.a
 	$(CC) -o $@ $< -L. -ljitdt-k
-ptranstest: ptranstest.o libjitdt-pk.a
-	$(MPICC) -o $@ $< -L. -ljitdt-pk
-transtest2: transtest2.o libjitdt-k.a
-	$(CC) -o $@ $< -L. -ljitdt-k
+ptranstest: ptranstest.o libk-jitdt-pk.a
+	$(MPICC) -o $@ $< -L. -lk-jitdt-pk
+transtest2: transtest2.o libk-jitdt-k.a
+	$(CC) -o $@ $< -L. -lk-jitdt-k
 ptranstest2: ptranstest2.o libjitdt-pk.a
 	$(MPICC) -o $@ $< -L. -ljitdt-pk
 k-transtest2: k-transtest2.o libk-jitdt-k.a
