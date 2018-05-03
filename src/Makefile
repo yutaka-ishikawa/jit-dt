@@ -128,8 +128,8 @@ ptranstest2: ptranstest2.o libjitdt-pk.a
 	$(MPICC) -o $@ $< -L. -ljitdt-pk
 k-transtest2: k-transtest2.o libk-jitdt-k.a
 	$(KCC) -o $@ $< -L. -lk-jitdt-k
-k-ptranstest2: k-ptranstest2.o libjitdt-pk.a
-	$(MPICC) -o $@ $< -L. -ljitdt-pk
+k-ptranstest2: k-ptranstest2.o libk-jitdt-pk.a
+	$(MPICC) -o $@ $< -L. -lk-jitdt-pk
 ltranstest: transtest.o libjitdt-l.a
 	$(CC) -o $@ $< -L. -ljitdt-l
 pltranstest: ptranstest.o libjitdt-pl.a
