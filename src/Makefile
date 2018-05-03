@@ -68,7 +68,7 @@ endif
 all: server client libs
 server: $(SERVER_CMDS)
 client: $(CLIENT_CMDS)
-k-client: $(K_CLIENT_CMDS)
+k_client: $(K_CLIENT_CMDS)
 libs: $(LIBS)
 #
 libjitdt-k.a: $(KLIB)
@@ -100,6 +100,11 @@ install_lib: libs
 	[ -d $(INSTLIB) ] || mkdir -p $(INSTLIB)
 	$(INSTALL) jitclient.h misclib.h $(INSTINCL)
 	$(INSTALL) $(LIBS) $(INSTLIB)
+install_k_client: k_client
+	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
+	$(INSTALL) $(K_CLIENT_CMDS) $(INSTBIN) 
+	[ -d $(INSTETC) ] || mkdir -p $(INSTETC)
+	$(INSTALL) -m 0644 $(CLIENT_CONFS) $(INSTETC) 
 
 .PHONY: depend
 depend:  $(OBJS:.o=.c)
