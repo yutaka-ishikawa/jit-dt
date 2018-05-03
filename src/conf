@@ -7,7 +7,7 @@
 #	20150806-140030.all_pawr_qcf.dat
 
 region kobe {
-    pattern = ".*_\\(.*\\)_A08_pawr_\\(.*\\).dat";
+    pattern = ".*_\\(.*\\)_A06_pawr_\\(.*\\).dat";
     date = "$1";
     type = "$2";
     fname = "kobe_$1_$2.dat";
