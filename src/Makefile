@@ -14,14 +14,18 @@ CLIENT_CMDS=jit-kwatch jit-kobewatch kwatcher lwatcher transgen \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
 	ktestgen.pl ltestgen.pl \
 	jit-watch.sh jit-yiwatch jit-yi2watch
+K_CLIENT_CMDS=jit-kwatch kwatcher transgen k-transtest2 k-ptranstest2
 CLIENT_CONFS=conf conf-test
 SERVER_CONFS=serverconf
 
 HOSTNAME=$(shell hostname)
 MPICC = mpicc
+## for test pupose */
+KCC = cc
 FJCFLAGS =
 ifeq (fe01, $(findstring fe01, $(HOSTNAME)))
 	MPICC = mpifccpx
+	KCC = fccpx 
 	FJCFLAGS = -Xg
 endif
 CC = gcc
@@ -37,10 +41,11 @@ OBJS2 = http_put.o http_daemon.o
 POBJS =  ptranstest.o ptranstest2.o pjitclient.o
 LIBS = libjitdt-k.a libjitdt-pk.a libjitdt-l.a libjitdt-pl.a
 KLIB = jitclient.o jitkclient.o inotifylib2.o misclib.o regexplib.o
+K-KLIB = k-jitclient.o k-jitkclient.o k-inotifylib2.o k-misclib.o k-regexplib.o
 PKLIB = pjitclient.o jitkclient.o inotifylib2.o misclib.o
 LLIB = jitclient.o jitcclient.o inotifylib2.o misclib.o regexplib.o
 PLLIB = pjitclient.o jitcclient.o inotifylib2.o misclib.o
-CCFLAGS += -O3 -Wall -g -c 
+CCFLAGS += -O3 -Wall -g -c $(FJCFLAGS)
 MPICCFLAGS += -DMPIENV $(CCFLAGS) $(FJCFLAGS)
 LDFLAGS_HTTP_DAEMON = \
 	../libmicrohttpd-0.9.47/src/microhttpd/.libs/libmicrohttpd.a \
@@ -62,6 +67,7 @@ endif
 all: server client libs
 server: $(SERVER_CMDS)
 client: $(CLIENT_CMDS)
+k-client: $(K_CLIENT_CMDS)
 libs: $(LIBS)
 #
 libjitdt-k.a: $(KLIB)
@@ -71,6 +77,8 @@ libjitdt-pk.a: $(PKLIB)
 libjitdt-l.a: $(LLIB)
 	ar rs $@ $^
 libjitdt-pl.a: $(PLLIB)
+	ar rs $@ $^
+libk-jitdt-k.a: $(K-KLIB)
 	ar rs $@ $^
 install: install_server install_client install_lib
 install_server: server
@@ -114,6 +122,10 @@ transtest2: transtest2.o libjitdt-k.a
 	$(CC) -o $@ $< -L. -ljitdt-k
 ptranstest2: ptranstest2.o libjitdt-pk.a
 	$(MPICC) -o $@ $< -L. -ljitdt-pk
+k-transtest2: k-transtest2.o libk-jitdt-k.a
+	$(KCC) -o $@ $< -L. -lk-jitdt-k
+k-ptranstest2: k-ptranstest2.o libjitdt-pk.a
+	$(MPICC) -o $@ $< -L. -ljitdt-pk
 ltranstest: transtest.o libjitdt-l.a
 	$(CC) -o $@ $< -L. -ljitdt-l
 pltranstest: ptranstest.o libjitdt-pl.a
@@ -130,6 +142,22 @@ pjitclient.o: jitclient.c
 ptranstest.o: transtest.c
 	$(MPICC) $(MPICCFLAGS) -o $@ -c $<
 ptranstest2.o: transtest2.c
+	$(MPICC) $(MPICCFLAGS) -o $@ -c $<
+#
+#
+k-jitclient.o: jitclient.c
+	$(KCC) $(CCFLAGS) -o $@ -c $<
+k-jitkclient.o: jitkclient.c
+	$(KCC) $(CCFLAGS) -o $@ -c $<
+k-inotifylib2.o: inotifylib2.c
+	$(KCC) $(CCFLAGS) -o $@ -c $<
+k-misclib.o: misclib.c
+	$(KCC) $(CCFLAGS) -o $@ -c $<
+k-regexplib.o: regexplib.c
+	$(KCC) $(CCFLAGS) -o $@ -c $<
+k-transtest2.o: transtest2.c
+	$(KCC) $(CCFLAGS) -o $@ -c $<
+k-ptranstest2.o: transtest2.c
 	$(MPICC) $(MPICCFLAGS) -o $@ -c $<
 
 #kwatcher: kwatcher.o misclib.o jitkclient.o inotifylib.o
