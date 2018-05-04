@@ -1,23 +1,41 @@
-#!/bin/bash
-TOP=~/nowcast/
-PID_FILE=~/KWATCH_PID
+#!/bin/bash                                                                     
+TOP=~/nowcast
 DAEMON=kwatcher
-OPTIONS="-D -d -v "
+LOGFILE=$TOP/KWATCHLOG
+PID_FILE=$TOP/KWATCH_PID
+CONF_FILE=$TOP/etc/conf
+OPTIONS="-D -d -v -c $CONF_FILE -f $LOGFILE"
+OPTIONS2="-d -v -c $CONF_FILE -f $LOGFILE"
 
 case "$1" in
   start)
-        echo -n "Starting kwatch: "
-	$DAEMON $OPTIONS $* >$PID_FILE
+        BELL_DIR=$2
+        DATA_DIR=$3
+        echo -n "Removing data: $DATA_DIR"
+        rm -f $DATA_DIR/*
+        echo "done"
+        echo -n "Starting kwatcher: " $OPTIONS $BELL_DIR $DATA_DIR
+        $DAEMON $OPTIONS $BELL_DIR $DATA_DIR >$PID_FILE
+        echo "done"
+        ;;
+  start2)
+        BELL_DIR=$2
+        DATA_DIR=$3
+        echo -n "Removing data: $DATA_DIR"
+        rm -f $DATA_DIR/*
+        echo "done"
+        echo -n "Starting kwatcher: "
+        $DAEMON $OPTIONS2 $BELL_DIR $DATA_DIR >$PID_FILE
         echo "done"
         ;;
   stop)
-        echo -n "Stopping jit-kwatch: "
-	kill -KILL `cat $PID_FILE`
+        echo -n "Stopping kwatcher: "
+        kill -KILL `cat $PID_FILE`
         echo "done"
         ;;
   *)
-        echo "Usage: jit-kwatch start [<options>]" >&2
-        echo "       jit-kwatch stop" >&2
+        echo "Usage: $0 start <watching directory> <data directory>" >&2
+        echo "       $0 stop" >&2
         ;;
 esac
 
