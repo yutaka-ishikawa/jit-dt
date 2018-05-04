@@ -1,10 +1,10 @@
 #
-# For K, -DUSE_LOCKF is required
+# For K and hibiki, -DUSE_LOCKF is required
 #
 CCFLAGS = -DUSE_LOCKF
-#INSTTOP = /opt/nowcast
+INSTTOP = /opt/nowcast
 #INSTTOP = $(HOME)/nowcast
-INSTTOP = /opt/nowcast/yitest2
+#INSTTOP = /opt/nowcast/yitest2
 
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki
