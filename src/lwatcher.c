@@ -42,10 +42,11 @@ showsettings(struct sockaddr_in saddr)
     fprintf(stderr, "    Daemon PID          : %d\n", pid);
     fprintf(stderr, "    Listening IP address: %s\n",
 	    inet_ntoa(saddr.sin_addr));
-    fprintf(stderr, "    Listening Port:       %d\n", ntohs(saddr.sin_port));
-    fprintf(stderr, "    Watching  directory:  %s\n", indir);
-    fprintf(stderr, "    History size:         %d\n", histsize());
-    fprintf(stderr, "    Flags:                %s (%x)\n", flags, nflag);
+    fprintf(stderr, "    Listening Port      : %d\n", ntohs(saddr.sin_port));
+    fprintf(stderr, "    Watching  directory : %s\n", indir);
+    fprintf(stderr, "    History size        : %d\n", histsize());
+    fprintf(stderr, "    Log file            : %s\n", lognmbase);
+    fprintf(stderr, "    Flags               : %s (%x)\n", flags, nflag);
     fprintf(stderr, "*********************************************\n");
     fflush(stderr);
 }
@@ -62,9 +63,16 @@ int
 init_transfer(char *host, int port, struct sockaddr_in *saddrp)
 {
     int		sock, cc, on;
-    if ((cc = setupinet(saddrp, host, port)) < 0) {
-	fprintf(stderr, "No IP address of %s for AF_INET\n", host);
-	exit(-1);
+
+    if (!strcmp(host, "any")) {
+	saddrp->sin_addr.s_addr = htonl(INADDR_ANY);
+	saddrp->sin_family = AF_INET;
+	saddrp->sin_port = htons(port);
+    } else {
+	if ((cc = setupinet(saddrp, host, port)) < 0) {
+	    fprintf(stderr, "No IP address of %s for AF_INET\n", host);
+	    exit(-1);
+	}
     }
     if ((sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
 	perror("socket"); exit(1);
@@ -100,7 +108,11 @@ watcher(char *fname, void **args)
     }
     dt = atoll(date);
     tp = sync_entry(type);
-    histput(fname, dt, tp);
+    if (tp < 0) {
+	unlink(fname);
+    } else {
+	histput(fname, dt, tp);
+    }
     return 0;
 }
 
@@ -176,6 +188,10 @@ transfer(void *param)
 		/* checking if all types arrive */
 	    retry_get:
 		for (i = 0; i < nsize; i++) {
+		    DBG {
+			fprintf(stderr,
+				"hp->fname[%d] = %s\n", i, hp->fname[i]);
+		    }
 		    if (hp->fname[i] == NULL) {
 			histwait();
 			goto retry_get;
@@ -265,15 +281,19 @@ main(int argc, char **argv)
     pthread_t		thread;
 
     if (argc < 2) {
-	fprintf(stderr, "usage: %s <watching directory> "
-		"[-h history count] [-D] [-d] [-v]\n", argv[0]);
+	fprintf(stderr, "usage: %s "
+		"[-c <conf directory>] [-h <history count>] "
+		"[-f <log file>]\n"
+		"\t\t[-p <port number>] [-H <host name>] [-D] [-d] [-v]\n"
+		"\t\t<watching directory>\n", argv[0]);
 	return -1;
     }
     nhist = MAX_HISTORY;
     strcpy(confname, DEFAULT_CONFNAME);
-    strcpy(hostname, HOST_DEFAULT);
+    //strcpy(hostname, HOST_DEFAULT);
+    strcpy(hostname, "any");
     if (argc > 2) {
-	while ((opt = getopt(argc, argv, "c:dDvh:H:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "c:dDvh:H:p:f:")) != -1) {
 	    switch (opt) {
 	    case 'c': /* conf */
 		strcpy(confname, optarg);
@@ -285,6 +305,9 @@ main(int argc, char **argv)
 	    case 'D': /* daemonize */
 		strcat(flags, " -D");
 		dmflag = 1;
+		break;
+	    case 'f':
+		strcpy(lognmbase, optarg);
 		break;
 	    case 'v': /* verbose mode */
 		nflag |= MYNOTIFY_VERBOSE;

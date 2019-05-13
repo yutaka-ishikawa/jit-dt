@@ -187,13 +187,10 @@ histsize()
 }
 
 void
-histremove()
+_histremove()
 {
     int		i;
-    histdata	*hp;
-
-    pthread_mutex_lock(&mutex);
-    hp = &history[conshistp];
+    histdata	*hp = &history[conshistp];
     /*
      * hp->date = 0; don't initialize it because the producer still looks 
      * at this entry whether or not the same dated data must be stored.
@@ -210,6 +207,13 @@ histremove()
     }
     UPDATE_POINTER(conshistp);
     --numhist;
+}
+
+void
+histremove()
+{
+    pthread_mutex_lock(&mutex);
+    _histremove();
     pthread_mutex_unlock(&mutex);
 }
 
@@ -251,6 +255,10 @@ histput(char *path, long long dt, int tent)
     char	*cp;
     histdata	*ohp = NULL;
 
+    if (tent < 0 || tent > FNAME_MAX) {
+	fprintf(stderr, "histput: type out of range (%d)\n", tent);
+	return NULL;
+    }
     if ((cp = malloc(strlen(path) + 1)) == NULL) {
 	fprintf(stderr, "histput:Cannot reserve memory\n"); fflush(stderr);
 	exit(-1);
@@ -261,15 +269,15 @@ histput(char *path, long long dt, int tent)
     if (dt > history[prodhistp].date) { /* move to the next entry */
 	ohp = &history[prodhistp];
 	UPDATE_POINTER(prodhistp);
+	history[prodhistp].date = 0;
     }
     if (dt == history[prodhistp].date) { /* keeping the same entry */
 	;
     } else {
 	history[prodhistp].date = dt;
 	numhist++;
-	if (numhist > nhist) { /* forcing consume */
-	    UPDATE_POINTER(conshistp);
-	    --numhist;
+	if (numhist > nhist) { /* forcing consume and remove */
+	    _histremove();
 	}
     }
     history[prodhistp].fname[tent] = cp;

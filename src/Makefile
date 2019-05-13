@@ -1,10 +1,11 @@
 #
 # For K and hibiki, -DUSE_LOCKF is required
 #
-CCFLAGS = -DUSE_LOCKF
-INSTTOP = /opt/nowcast
+#CCFLAGS = -DUSE_LOCKF
+#INSTTOP = /opt/nowcast
 #INSTTOP = $(HOME)/nowcast
 #INSTTOP = /opt/nowcast/yitest2
+INSTTOP = /work/gg10/e29000/nowcast/kobe
 
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki
@@ -13,7 +14,7 @@ CLIENT_CMDS=jit-kwatch jit-kobewatch kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
 	ktestgen.pl ltestgen.pl \
-	jit-watch.sh jit-yiwatch jit-yi2watch
+	jit-watch.sh jit-yiwatch jit-yi2watch jit-lwatch
 K_CLIENT_CMDS=jit-kwatch kwatcher transgen k-transtest2 k-ptranstest2
 CLIENT_CONFS=conf conf-test
 SERVER_CONFS=serverconf
