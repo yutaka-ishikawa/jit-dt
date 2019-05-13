@@ -5,11 +5,14 @@ PKCS11=~/.ssh/id_rsa-1
 SCRIPT_FILE=~/SSH_AGENT_SCRIPT
 PID_FILE=~/JITDT_PID
 DAEMON=watch_and_transfer
-OPTIONS="sftp:$REMOTEUSER@210.137.243.194:/work/gg10/e29000/nowcast/kobe/data/  \
+OPTIONS="sftp:$REMOTEUSER@210.137.243.194:/work/hp150019/share/nowcast/kobe/data/ \
     /mnt/latest-kobe/ \
     -c $TOP/etc/serverconf \
-    -n $TOP/jitready:/work/gg10/e29000/nowcast/kobe/bell/ -v -D \
+    -n $TOP/jitready:/work/hp150019/share/nowcast/kobe/bell/ -v -D \
     -f $TOP/JITLOG"
+
+#OPTIONS=sftp:$REMOTEUSER@210.137.243.194:/work/gg10/e29000/nowcast/kobe/data/
+#    -n $TOP/jitready:/work/gg10/e29000/nowcast/kobe/bell/ -v -D
 
 #    -s 2019-0512/15/
 
