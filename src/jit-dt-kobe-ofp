@@ -1,0 +1,46 @@
+#!/bin/bash
+TOP=~/ofp/
+REMOTEUSER=e29000
+PKCS11=~/.ssh/id_rsa-1
+SCRIPT_FILE=~/SSH_AGENT_SCRIPT
+PID_FILE=~/JITDT_PID
+DAEMON=watch_and_transfer
+OPTIONS="sftp:$REMOTEUSER@210.137.243.194:/work/gg10/e29000/nowcast/kobe/data/  \
+    /mnt/latest-kobe/ \
+    -c $TOP/etc/serverconf \
+    -n $TOP/jitready:/work/gg10/e29000/nowcast/kobe/bell/ -v -D \
+    -f $TOP/JITLOG"
+
+#    -s 2019-0512/15/
+
+
+case "$1" in
+  start)
+        echo -n "Starting jit-dt: "
+	SCRIPT=`ssh-agent`
+	eval $SCRIPT
+	ssh-add $PKCS11
+	echo $SCRIPT >$SCRIPT_FILE
+	shift 1
+	$DAEMON $OPTIONS $* >$PID_FILE
+	if [ "$?" -ne 0 ]; then
+	    echo "KILL ssh-agent"
+	    kill -KILL `sed -e 's/.*pid \(.*\);/\1/' $SCRIPT_FILE`
+	fi
+        echo "done"
+        ;;
+  stop)
+        echo -n "Stopping jit-dt: "
+	kill -KILL `cat $PID_FILE`
+	kill -KILL `sed -e 's/.*pid \(.*\);/\1/' $SCRIPT_FILE`
+        echo "done"
+        ;;
+  *)
+        echo "Usage: jit-dt start [<options>]" >&2
+        echo "       jit-dt stop" >&2
+        echo "  Ex.  jit-dt start 2016-1207/10/" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
