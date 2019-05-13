@@ -102,7 +102,7 @@ put_cmd(FILE *wfp, int rfd, const char *fmt, char *a1, char *a2)
     DBG {
 	LOG_PRINT("put_cmd: going to write: cmdformat=%s ... ", fmt);
     }
-    if (wait_rwfd(-1, fileno(wfp), 1) < 0) {
+    if (wait_rwfd(-1, fileno(wfp), 10) < 0) {
 	return -1;
     }
     fprintf(wfp, fmt, a1, a2); fflush(wfp);
