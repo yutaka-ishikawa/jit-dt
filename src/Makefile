@@ -8,7 +8,7 @@
 INSTTOP = /work/gg10/e29000/nowcast/kobe
 
 .PHONY: all
-SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki
+SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki jit-dt-kobe-ofp
 SERVER_CMDS2=http_daemon http_put
 CLIENT_CMDS=jit-kwatch jit-kobewatch kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
