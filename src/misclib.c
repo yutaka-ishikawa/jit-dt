@@ -277,24 +277,25 @@ histput(char *path, long long dt, int tent)
 	if (history[prodhistp].date != 0) {
 	    UPDATE_POINTER(prodhistp);
 	}
-	history[prodhistp].date = dt;
 	numhist++;
 	if (numhist > nhist) { /* forcing consume and remove */
+	    fprintf(stderr, "%s: prodhistp(%d) conshistp(%d)\n", __func__, prodhistp, conshistp); fflush(stderr);
 	    _histremove();
 	}
+	history[prodhistp].date = dt;
     } else if (dt < history[prodhistp].date) {
 	/* bug fixed reported by Otsuka-san, 2019/11/28 */
-	int	i, newprodp = prodhistp - 1;
+	int	i, oldprodp = prodhistp - 1;
 	fprintf(stderr,
 		"%s: dt = %lld < history[prodhistp=%d].date = %lld searching\n",
 		__func__, dt, prodhistp, history[prodhistp].date);
 	fflush(stderr);
 	/* find the entry, at most 'nhist - 1' before */
 	for (i = 0; i < nhist - 1; i++) {
-	    if (dt == history[newprodp].date) {
+	    if (dt == history[oldprodp].date) {
                 goto history_found;
 	    }
-	    newprodp = (newprodp == 0 ? nhist : newprodp) - 1;
+	    oldprodp = (oldprodp == 0 ? nhist : oldprodp) - 1;
 	}
 	/* not found */
         fprintf(stderr, "\tentry NOT found: unlink %s\n", path);
@@ -302,9 +303,10 @@ histput(char *path, long long dt, int tent)
         unlink(cp);
 	goto notfound;
     history_found:
-	prodhistp = newprodp;
+	history[oldprodp].fname[tent] = cp;
+    } else {
+	history[prodhistp].fname[tent] = cp;
     }
-    history[prodhistp].fname[tent] = cp;
     if (waithist) {
 	pthread_cond_signal(&cond);
     }
