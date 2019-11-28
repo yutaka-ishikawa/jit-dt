@@ -266,14 +266,11 @@ histput(char *path, long long dt, int tent)
     strcpy(cp, path);
 
     pthread_mutex_lock(&mutex);
-    /*
-     * In case of the first time:
-     *		prodhistp = 0 and history[prodhistp].date = 0
-     * In case of the condition of buffer full, the oldest data is removed and
-     * in that case, prodhistp points to the entry to save the new date.
-     * Thus, history[prodhistp].date must be also 0
-     */
-    if (dt > history[prodhistp].date) { /* move to the next entry */
+    if (dt == history[prodhistp].date) { /* keeping the same entry and reg. it*/
+	history[prodhistp].fname[tent] = cp;
+    } else if (dt > history[prodhistp].date) { /* move to the next entry */
+	/* In case of the first time,
+	 * prodhistp = 0 and history[prodhistp].date = 0 */
 	if (history[prodhistp].date != 0) {
 	    UPDATE_POINTER(prodhistp);
 	}
@@ -282,8 +279,9 @@ histput(char *path, long long dt, int tent)
 	    fprintf(stderr, "%s: prodhistp(%d) conshistp(%d)\n", __func__, prodhistp, conshistp); fflush(stderr);
 	    _histremove();
 	}
-	history[prodhistp].date = dt;
-    } else if (dt < history[prodhistp].date) {
+	history[prodhistp].date = dt; /* register */
+	history[prodhistp].fname[tent] = cp;
+    } else { /* dt < history[prodhistp].date */
 	/* bug fixed reported by Otsuka-san, 2019/11/28 */
 	int	i, oldprodp = prodhistp - 1;
 	fprintf(stderr,
@@ -304,8 +302,6 @@ histput(char *path, long long dt, int tent)
 	goto notfound;
     history_found:
 	history[oldprodp].fname[tent] = cp;
-    } else {
-	history[prodhistp].fname[tent] = cp;
     }
     if (waithist) {
 	pthread_cond_signal(&cond);
