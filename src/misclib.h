@@ -29,7 +29,7 @@ extern int	histsize();
 extern histdata	*histget();
 extern void	histremove();
 extern void	histwait();
-extern histdata	*histput(char *path, long long date, int type);
+extern void	histput(char *path, long long date, int type);
 extern int	mydaemonize(char*);
 
 #endif /* JIT_MISCLIB */

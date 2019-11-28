@@ -184,9 +184,9 @@ transfer(void *param)
 		}
 		break;
 	    case CMD_GET:
+	    retry_get:	/* debuged by Otsuka-san 2019/11/28 */
 		hp = histget();
 		/* checking if all types arrive */
-	    retry_get:
 		for (i = 0; i < nsize; i++) {
 		    DBG {
 			fprintf(stderr,

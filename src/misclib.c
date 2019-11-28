@@ -174,7 +174,7 @@ void
 histinit(int nh)
 {
     nhist = nh;
-    prodhistp = 0; conshistp = 1;  numhist = waithist = 0;
+    prodhistp = 0; conshistp = 0;  numhist = waithist = 0;
     pthread_mutex_init(&mutex, NULL);
     pthread_cond_init(&cond, NULL);
     pthread_cond_init(&cond2, NULL);
@@ -198,6 +198,7 @@ _histremove()
      * The consumer reads this entry. Thus, the producer keeps to look at
      * this entry.
      */
+    fprintf(stderr, "removing history[%d]: %lld\n", conshistp, hp->date); fflush(stderr);
     for (i = 0; i < FNAME_MAX; i++) {
 	if (hp->fname[i]) {
 	    unlink(hp->fname[i]);
@@ -249,15 +250,14 @@ histwait()
     return;
 }
 
-histdata *
+void
 histput(char *path, long long dt, int tent)
 {
     char	*cp;
-    histdata	*ohp = NULL;
 
     if (tent < 0 || tent > FNAME_MAX) {
 	fprintf(stderr, "histput: type out of range (%d)\n", tent);
-	return NULL;
+	return;
     }
     if ((cp = malloc(strlen(path) + 1)) == NULL) {
 	fprintf(stderr, "histput:Cannot reserve memory\n"); fflush(stderr);
@@ -266,19 +266,43 @@ histput(char *path, long long dt, int tent)
     strcpy(cp, path);
 
     pthread_mutex_lock(&mutex);
+    /*
+     * In case of the first time:
+     *		prodhistp = 0 and history[prodhistp].date = 0
+     * In case of the condition of buffer full, the oldest data is removed and
+     * in that case, prodhistp points to the entry to save the new date.
+     * Thus, history[prodhistp].date must be also 0
+     */
     if (dt > history[prodhistp].date) { /* move to the next entry */
-	ohp = &history[prodhistp];
-	UPDATE_POINTER(prodhistp);
-	history[prodhistp].date = 0;
-    }
-    if (dt == history[prodhistp].date) { /* keeping the same entry */
-	;
-    } else {
+	if (history[prodhistp].date != 0) {
+	    UPDATE_POINTER(prodhistp);
+	}
 	history[prodhistp].date = dt;
 	numhist++;
 	if (numhist > nhist) { /* forcing consume and remove */
 	    _histremove();
 	}
+    } else if (dt < history[prodhistp].date) {
+	/* bug fixed reported by Otsuka-san, 2019/11/28 */
+	int	i, newprodp = prodhistp - 1;
+	fprintf(stderr,
+		"%s: dt = %lld < history[prodhistp=%d].date = %lld searching\n",
+		__func__, dt, prodhistp, history[prodhistp].date);
+	fflush(stderr);
+	/* find the entry, at most 'nhist - 1' before */
+	for (i = 0; i < nhist - 1; i++) {
+	    if (dt == history[newprodp].date) {
+                goto history_found;
+	    }
+	    newprodp = (newprodp == 0 ? nhist : newprodp) - 1;
+	}
+	/* not found */
+        fprintf(stderr, "\tentry NOT found: unlink %s\n", path);
+	fflush(stderr);
+        unlink(cp);
+	goto notfound;
+    history_found:
+	prodhistp = newprodp;
     }
     history[prodhistp].fname[tent] = cp;
     if (waithist) {
@@ -287,8 +311,9 @@ histput(char *path, long long dt, int tent)
     if (waithist2) {
 	pthread_cond_signal(&cond2);
     }
+notfound:
     pthread_mutex_unlock(&mutex);
-    return ohp;
+    return;
 }
 
 #define LCK_FILE_1	"JITDT-READY-1"
