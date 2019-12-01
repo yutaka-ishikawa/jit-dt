@@ -158,6 +158,7 @@ dateconv(struct timeval	*tsec, char *dbufp, char *fmtbuf)
 //#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
 #define MAX_HISTORY	(2*10)
 #define UPDATE_POINTER(v)	(v) = ((v) + 1) % nhist
+#define REWIND_POINTER(v)	(v) = ((v) == 0 ? nhist: (v)) - 1
 static pthread_mutex_t	mutex;
 static pthread_cond_t	cond, cond2;
 static histdata		history[MAX_HISTORY];
@@ -282,8 +283,9 @@ histput(char *path, long long dt, int tent)
 	history[prodhistp].date = dt; /* register */
 	history[prodhistp].fname[tent] = cp;
     } else { /* dt < history[prodhistp].date */
-	/* bug fixed reported by Otsuka-san, 2019/11/28 */
-	int	i, oldprodp = prodhistp - 1;
+	/* bug fixed reported by Otsuka-san, 2019/11/28 and 2019/12/01 */
+	int	i, oldprodp;
+	oldprodp = prodhistp; REWIND_POINTER(oldprodp);
 	fprintf(stderr,
 		"%s: dt = %lld < history[prodhistp=%d].date = %lld searching\n",
 		__func__, dt, prodhistp, history[prodhistp].date);
@@ -293,7 +295,7 @@ histput(char *path, long long dt, int tent)
 	    if (dt == history[oldprodp].date) {
                 goto history_found;
 	    }
-	    oldprodp = (oldprodp == 0 ? nhist : oldprodp) - 1;
+	    REWIND_POINTER(oldprodp);
 	}
 	/* not found */
         fprintf(stderr, "\tentry NOT found: unlink %s\n", path);
