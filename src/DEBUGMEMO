@@ -8,4 +8,7 @@
 　　これでうまく行ったからといってもこの部分修正する必要ある
 
 バグの現象をおさえるために以下のプログラム作成。
-　$ testinotify /mnt/latest-kobe/ -s 2020-0105/10 -d -v -f ~/debug/
+　$ testinotify /mnt/latest-kobe/ -s 2020-0105/10/ -D -d -v -f ~/debug/LOG
+
+for local
+　$ ./testinotify ../tmp -D -d -v -f ~/debug/LOG

@@ -21,7 +21,7 @@
 #define DBG		if (flag&MYNOTIFY_DEBUG)
 #define VMODE		if (flag&MYNOTIFY_VERBOSE)
 #define DBG_VMODE	if (flag&(MYNOTIFY_DEBUG|MYNOTIFY_DEBUG))
-#define EVENTBUFSIZE	((sizeof(struct inotify_event)+NAME_MAX+1)*16)
+#define EVENTBUFSIZE	((sizeof(struct inotify_event)+NAME_MAX+1)*16*8)
 #define MAX_DIRS	(24*60*2+1)
 #define MAX_KEEPDIR	4
 #define PATH_WATCH	"./"

@@ -99,6 +99,8 @@ main(int argc, char **argv)
 	    }
 	    strcpy(startdir, optarg);
 	    break;
+	default:
+	    fprintf(stderr, "Unknown option -%c\n", opt);
 	}
     }
     if (dmflag == 1) {
