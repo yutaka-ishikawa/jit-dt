@@ -1,0 +1,11 @@
+イベントが取れない原因はinotifyのイベント取る時にreadが完全ではないのではないか？
+　　以下の通り取り出している。
+	if ((sz = read(ntfydir, evtbuf, EVENTBUFSIZE)) < 0) {
+	    perror("read inotify_event"); exit(-1);
+	}
+　　以下の通り16倍にした
+	#define EVENTBUFSIZE	((sizeof(struct inotify_event)+NAME_MAX+1)*16)
+　　これでうまく行ったからといってもこの部分修正する必要ある
+
+バグの現象をおさえるために以下のプログラム作成。
+　$ testinotify /mnt/latest-kobe/ -s 2020-0105/10 -d -v -f ~/debug/
