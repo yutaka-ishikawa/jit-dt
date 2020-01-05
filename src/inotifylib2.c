@@ -1,5 +1,6 @@
 /*
  *	inotify library separated from jit-transfer
+ *	05/01/2020 EVETBUFSIZE is increased
  *	24/12/2017 two inotify events are merged
  *	16/08/2016 Written by Yutaka Ishikawa, RIKEN AICS
  *			yutaka.ishikawa@riken.jp
@@ -20,7 +21,7 @@
 #define DBG		if (flag&MYNOTIFY_DEBUG)
 #define VMODE		if (flag&MYNOTIFY_VERBOSE)
 #define DBG_VMODE	if (flag&(MYNOTIFY_DEBUG|MYNOTIFY_DEBUG))
-#define EVENTBUFSIZE	(sizeof(struct inotify_event)+NAME_MAX+1)
+#define EVENTBUFSIZE	((sizeof(struct inotify_event)+NAME_MAX+1)*16)
 #define MAX_DIRS	(24*60*2+1)
 #define MAX_KEEPDIR	4
 #define PATH_WATCH	"./"

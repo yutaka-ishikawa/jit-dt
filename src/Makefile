@@ -8,7 +8,7 @@
 INSTTOP = /work/gg10/e29000/nowcast/kobe
 
 .PHONY: all
-SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki jit-dt-kobe-ofp
+SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki jit-dt-kobe-ofp testinotify
 SERVER_CMDS2=http_daemon http_put
 CLIENT_CMDS=jit-kwatch jit-kobewatch kwatcher lwatcher transgen \
 	transtest transtest2 ptranstest ptranstest2 \
@@ -36,7 +36,7 @@ INSTINCL = $(INSTTOP)/include
 INSTLIB =  $(INSTTOP)/lib
 INSTETC =  $(INSTTOP)/etc
 OBJS =	misclib.o regexplib.o translib.o jitclient.o jitkclient.o jitcclient.o \
-	inotifylib2.o watch_and_transfer.o \
+	inotifylib2.o watch_and_transfer.o testinotify.o \
 	kwatcher.o  lwatcher.o transtest.o transtest2.o transgen.o
 OBJS2 = http_put.o http_daemon.o
 POBJS =  ptranstest.o ptranstest2.o pjitclient.o
@@ -124,6 +124,8 @@ kwatcher: kwatcher.o libjitdt-k.a
 	$(CC) -o $@ $^ $(LDFLAGS_CLIENT)
 lwatcher: lwatcher.o libjitdt-l.a
 	$(CC) -o $@ $^ $(LDFLAGS_CLIENT) -lpthread
+testinotify: testinotify.o inotifylib2.o misclib.o
+	$(CC) -o $@ $^
 transtest: transtest.o libjitdt-k.a
 	$(CC) -o $@ $< -L. -ljitdt-k
 ptranstest: ptranstest.o libk-jitdt-pk.a
