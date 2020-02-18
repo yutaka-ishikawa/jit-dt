@@ -159,6 +159,7 @@ dateconv(struct timeval	*tsec, char *dbufp, char *fmtbuf)
 #define MAX_HISTORY	(2*10)
 #define UPDATE_POINTER(v)	(v) = ((v) + 1) % nhist
 #define REWIND_POINTER(v)	(v) = ((v) == 0 ? nhist: (v)) - 1
+#define KEEP_FILE_COUNT	3
 static pthread_mutex_t	mutex;
 static pthread_cond_t	cond, cond2;
 static histdata		history[MAX_HISTORY];
@@ -175,7 +176,7 @@ void
 histinit(int nh)
 {
     nhist = nh;
-    prodhistp = 0; conshistp = 0;  numhist = waithist = 0;
+    prodhistp = 0; conshistp = 0; numhist = waithist = 0;
     pthread_mutex_init(&mutex, NULL);
     pthread_cond_init(&cond, NULL);
     pthread_cond_init(&cond2, NULL);
@@ -191,7 +192,14 @@ void
 _histremove()
 {
     int		i;
+    int		rmhistp;
     histdata	*hp = &history[conshistp];
+
+    /*
+     * removing history file is the previous "KEEP_FILE_COUNT" backward file.
+     */
+    rmhistp = ((conshistp + nhist) - KEEP_FILE_COUNT) % nhist;
+    hp = &history[rmhistp];
     /*
      * hp->date = 0; don't initialize it because the producer still looks 
      * at this entry whether or not the same dated data must be stored.
@@ -199,7 +207,7 @@ _histremove()
      * The consumer reads this entry. Thus, the producer keeps to look at
      * this entry.
      */
-    fprintf(stderr, "removing history[%d]: %lld\n", conshistp, hp->date); fflush(stderr);
+    fprintf(stderr, "removing history[%d]: %lld\n", rmhistp, hp->date); fflush(stderr);
     for (i = 0; i < FNAME_MAX; i++) {
 	if (hp->fname[i]) {
 	    unlink(hp->fname[i]);
