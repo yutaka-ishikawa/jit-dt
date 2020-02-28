@@ -38,12 +38,12 @@ printf("Interval: %d sec, Count: %d\n", $watch_interval, $count);
 
 $SIG{ALRM} = sub {
 #    printf("ALRAM: %s\n", $cmd);
-    if (eof(INPUT)) {
-	printf("Finish.\n");
-	exit 0;
-    }
     $nfiles = 2;
     while ($nfiles-- > 0) {
+	if (eof(INPUT)) {
+	    printf("Finish.\n");
+	    exit 0;
+	}
 	do {
 	    $line = <INPUT>;
 	} while ($line !~ /^[\d]/);
