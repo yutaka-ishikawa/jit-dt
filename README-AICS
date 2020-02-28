@@ -64,3 +64,8 @@ hibiki(LOCAL), b01, b02, b03, b04
     $ module load openmpi/2.1.0 により OpenMPI が利用可能
       hibiki(GLOBAL)上ではmoduleロード必要なし
 
+------------------------------------------------------------------------
+saitama test
+$ ./src/watch_and_transfer sftp: ./dtmp/ -c ./test_data/saitama.conf -y -v
+$ ./src/stestgen.pl test_data/saitama_testdata.log test_data/saitama_testdata.tar ./dtmp/ 1 83
+

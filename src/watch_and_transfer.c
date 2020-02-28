@@ -32,7 +32,7 @@
 
 #define PATH_WATCH	"./"
 static int	pid;
-static int	nflag, tflag;
+static int	nflag, tflag, dryflag;
 static int	keep_proc;
 
 static char	confname[PATH_MAX];
@@ -51,7 +51,7 @@ usage(char **argv)
 	    "USAGE: %s <url>\n"
 	    "       <watching directory path>"
 	    "[-s <start directory path>] [-k]\n"
-	    "       [-n <local file>:<remote notification directory>] [-D] [-f log file name] [-d] [-v]\n",
+	    "       [-n <local file>:<remote notification directory>] [-D] [-f <log file name>] [-c <conf file>] [-d] [-v] [-y]\n",
 	    argv[0]);
     fprintf(stderr, "e.g.:\n");
     fprintf(stderr, "       %s scp:kncc-login1.kncc.cc.u-tokyo.ac.jp \\\n"
@@ -118,6 +118,10 @@ transfer(char *fname, void **args)
 	}
 	return 0;
     }
+    if (dryflag) {
+	LOG_PRINT("transfer %s %ld\n", basename(fname), sbuf.st_size);
+	return 1;
+    }
     VMODE {
 	double	sec;
 	struct timeval	time;
@@ -182,8 +186,13 @@ main(int argc, char **argv)
     fformat(topdir);
     strcpy(confname, DEFAULT_CONFNAME);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:c:y")) != -1) {
 	    switch (opt) {
+	    case 'y': /* dry run */
+		dryflag = 1;
+		nflag = MYNOTIFY_DEBUG | MYNOTIFY_VERBOSE;
+		tflag |= TRANS_DEBUG | TRANS_VERBOSE;
+		break;
 	    case 'c': /* configuration file */
 		strcpy(confname, optarg);
 		break;
