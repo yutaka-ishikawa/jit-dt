@@ -26,6 +26,8 @@
 #define MAX_KEEPDIR	4
 #define PATH_WATCH	"./"
 #define IS_EXHAUST(idx)	(idx > (MAX_DIRS - 1))
+
+extern int dryflag;
 int	vflag;
 int	dflag;
 
@@ -233,6 +235,10 @@ restart:
 		}
 		if (!strcmp(prevpath, avpath)) {
 		    /* the same file has been transfered */
+		    VMODE {
+			fprintf(stderr, "\tIgnore the same file:%s\n", avpath);
+			fflush(stderr);
+		    }
 		    continue;
 		}
 		cc = func(avpath, args);
@@ -245,6 +251,10 @@ restart:
 	}
 	FD_ZERO(&readfds);
 	FD_SET(ntfydir, &readfds);
+	if (dryflag > 1) {  /* sleep if more than 1 */
+	    fprintf(stderr, "\tsleep %d\n", dryflag - 1);
+	    sleep(dryflag - 1);
+	}
     }
     return 0;
 resetting:

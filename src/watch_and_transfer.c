@@ -31,8 +31,9 @@
 #define VMODE if (tflag & TRANS_VERBOSE)
 
 #define PATH_WATCH	"./"
+int		dryflag;
 static int	pid;
-static int	nflag, tflag, dryflag;
+static int	nflag, tflag;
 static int	keep_proc;
 
 static char	confname[PATH_MAX];
@@ -186,10 +187,10 @@ main(int argc, char **argv)
     fformat(topdir);
     strcpy(confname, DEFAULT_CONFNAME);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:c:y")) != -1) {
+	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:c:y:")) != -1) {
 	    switch (opt) {
 	    case 'y': /* dry run */
-		dryflag = 1;
+		dryflag = atoi(optarg); /* sleep if more than 1 */
 		nflag = MYNOTIFY_DEBUG | MYNOTIFY_VERBOSE;
 		tflag |= TRANS_DEBUG | TRANS_VERBOSE;
 		break;

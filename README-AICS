@@ -66,6 +66,8 @@ hibiki(LOCAL), b01, b02, b03, b04
 
 ------------------------------------------------------------------------
 saitama test
-$ ./src/watch_and_transfer sftp: ./dtmp/ -c ./test_data/saitama.conf -y -v
+# The option -y has additional argument to specify sleep time.
+#  -y 1 means no sleep, -y 3 means 2 sec sleep.
+$ ./src/watch_and_transfer sftp: ./dtmp/ -c ./test_data/saitama.conf -y 3 -v
 $ ./src/stestgen.pl test_data/saitama_testdata.log test_data/saitama_testdata.tar ./dtmp/ 1 83
 

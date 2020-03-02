@@ -23,6 +23,7 @@
 #define VMODE if (tflag & TRANS_VERBOSE)
 
 #define PATH_WATCH	"./"
+int		dryflag;
 static int	pid;
 static int	nflag, tflag;
 
