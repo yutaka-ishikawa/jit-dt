@@ -21,7 +21,7 @@
 #define DBG		if (flag&MYNOTIFY_DEBUG)
 #define VMODE		if (flag&MYNOTIFY_VERBOSE)
 #define DBG_VMODE	if (flag&(MYNOTIFY_DEBUG|MYNOTIFY_DEBUG))
-#define EVENTBUFSIZE	((sizeof(struct inotify_event)+NAME_MAX+1)*16*8)
+#define EVENTBUFSIZE	((sizeof(struct inotify_event)+NAME_MAX+1)*26*8)
 #define MAX_DIRS	(24*60*2+1)
 #define MAX_KEEPDIR	4
 #define PATH_WATCH	"./"
@@ -185,7 +185,9 @@ restart:
 	if ((sz = read(ntfydir, evtbuf, EVENTBUFSIZE)) < 0) {
 	    perror("read inotify_event"); exit(-1);
 	}
-	for (len = 0; len < sz; len += sizeof(struct inotify_event)+iep->len) {
+	for (len = 0; len < sz;
+	     len += sizeof(struct inotify_event)+iep->len,
+	     iep = (struct inotify_event*) ((char*) (iep + 1) + iep->len)) {
 	    DBG {
 		fprintf(stderr, "*** new event for directory (%0x) name(%s) ",
 			iep->mask, iep->name);  fflush(stderr);
