@@ -161,8 +161,8 @@ transfer(void *param)
 	    }
 	    switch (cmd) {
 	    case CMD_OPEN: /* opt1:type */
-		hp = histget();
 	    retry_open:
+		hp = histget();
 		fname = hp->fname[opt[0]];
 		if (fname == NULL) { /* Not available */
 		    histwait();

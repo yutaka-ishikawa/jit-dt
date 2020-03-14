@@ -155,6 +155,18 @@ dateconv(struct timeval	*tsec, char *dbufp, char *fmtbuf)
     return;
 }
 
+/*
+ * history[]: keeping the history file entries
+ * nhist: the size of history array
+ * numhist: the count of history entries
+ * prodhistp: producer pointer, index of the current entry being registered
+ * conshistp: consumer pointer, index of the current enntry for reader
+ * E.g.
+ *	arrive after: numhist = 1, prodhistp = 0, conshistp = 0
+ *      arrive after: numhist = 2, prodhistp = 1, conshistp = 0
+ *	read after:   numhist = 1, prodhistp = 1, conshistp = 1
+ *	read after:   numhist = 0, prodhistp = 1, conshistp = 2
+ */
 //#define MAX_HISTORY	(2*60*2)	/* 2 hour in case of 30sec internal */
 #define MAX_HISTORY	(2*10)
 #define UPDATE_POINTER(v)	(v) = ((v) + 1) % nhist
@@ -175,6 +187,10 @@ static int		numhist, waithist, waithist2;
 void
 histinit(int nh)
 {
+    if (nh <= (KEEP_FILE_COUNT + 1)) {
+	nh = KEEP_FILE_COUNT + 2;
+	fprintf(stderr, "history count is too short, set to %d\n", nh);
+    }
     nhist = nh;
     prodhistp = 0; conshistp = 0; numhist = waithist = 0;
     pthread_mutex_init(&mutex, NULL);
@@ -195,6 +211,9 @@ _histremove()
     int		rmhistp;
     histdata	*hp = &history[conshistp];
 
+    if ((nhist - numhist) < KEEP_FILE_COUNT) {
+	goto update; /* just update the pointer and size */
+    }
     /*
      * removing history file is the previous "KEEP_FILE_COUNT" backward file.
      */
@@ -215,6 +234,7 @@ _histremove()
 	    hp->fname[i] = 0;
 	}
     }
+update:
     UPDATE_POINTER(conshistp);
     --numhist;
 }
@@ -284,7 +304,12 @@ histput(char *path, long long dt, int tent)
 	    UPDATE_POINTER(prodhistp);
 	}
 	numhist++;
-	if (numhist > nhist) { /* forcing consume and remove */
+	/*
+	 * Keeping the previous "KEEP_FILE_COUNT" backward file.
+	 * This means the numhist must be less than (nhist - KEEP_FILE_COUNT)
+	 */
+	if (numhist > (nhist - KEEP_FILE_COUNT)) {
+	    /* forcing consume and remove */
 	    fprintf(stderr, "%s: prodhistp(%d) conshistp(%d)\n", __func__, prodhistp, conshistp); fflush(stderr);
 	    _histremove();
 	}
