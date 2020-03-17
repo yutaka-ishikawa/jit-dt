@@ -76,3 +76,6 @@ $ ./src/stestgen.pl test_data/saitama_testdata.log test_data/saitama_testdata.ta
 $ watch_and_transfer sftp: /mnt/latest-kobe/ \
 	-c ~/nowcast/etc/serverconf -y 1 -S -v -s 2020-0317/10/
 
+$ ./watch_and_transfer sftp: /mnt/latest-kobe/ \
+	-c ~/nowcast/etc/serverconf -y 1 -S -v -s 2020-0317/10/ \
+	-D -f ~/nowcast/JITLOG
