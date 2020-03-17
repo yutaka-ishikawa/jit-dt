@@ -71,3 +71,7 @@ saitama test
 $ ./src/watch_and_transfer sftp: ./dtmp/ -c ./test_data/saitama.conf -y 3 -v
 $ ./src/stestgen.pl test_data/saitama_testdata.log test_data/saitama_testdata.tar ./dtmp/ 1 83
 
+------------------------------------------------------------------------
+-S option is introduced to see a subdirectory at the new directory creation.
+$ watch_and_transfer sftp: /mnt/latest-kobe/ -c etc/serverconf -y 1 -S -v
+

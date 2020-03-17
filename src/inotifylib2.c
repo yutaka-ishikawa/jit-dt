@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <sys/inotify.h>
 #include <sys/select.h>
+#include <dirent.h>
 #include "inotifylib.h"
 
 #define DBG		if (flag&MYNOTIFY_DEBUG)
@@ -28,6 +29,7 @@
 #define IS_EXHAUST(idx)	(idx > (MAX_DIRS - 1))
 
 extern int dryflag;
+extern int sdirflag;
 int	vflag;
 int	dflag;
 
@@ -190,6 +192,7 @@ restart:
 	for (len = 0; len < sz;
 	     len += sizeof(struct inotify_event)+iep->len,
 	     iep = (struct inotify_event*) ((char*) (iep + 1) + iep->len)) {
+	    int	retry;
 	    DBG {
 		fprintf(stderr, "*** new event for directory (%0x) name(%s) ",
 			iep->mask, iep->name);  fflush(stderr);
@@ -214,6 +217,8 @@ restart:
 		     */
 		    rm_watch(curdir, ntfydir, flag);
 		}
+		retry = 0;
+	    retry:
 		if (IS_EXHAUST(curdir)) goto resetting;
 		curdir = add_watch(ntfydir, avpath,
 				   IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
@@ -221,8 +226,33 @@ restart:
 		strcpy(getwdir(curdir), avpath);
 		fformat(getwdir(curdir));
 		VMODE {
-		    fprintf(stderr, "now watching directory %s, dirid(%d)\n",
-			    getwdir(curdir), curdir);  fflush(stderr);
+		    fprintf(stderr, "now watching directory %s, dirid(%d), "
+			    "readlen(%ld) cur(%ld)\n",
+			    getwdir(curdir), curdir, len, sz);  fflush(stderr);
+		}
+		/* checking 2020.03.17 */
+		if (sdirflag == 1 && retry != 0
+		    && (len + (sizeof(struct inotify_event)+iep->len)) >= sz) {
+		    /* no more event is read. checking subdirectory has been
+		     * also created */
+		    DIR		*dirp;
+		    struct dirent *dent;
+		    if ((dirp = opendir(getwdir(curdir))) != NULL) {
+			while ((dent = readdir(dirp)) != NULL) {
+			    if (dent->d_type == DT_DIR) {
+				/* this should be the current directory */
+				strcpy(avpath, getwdir(iep->wd));
+				strcat(avpath, iep->name);
+				strcat(avpath, dent->d_name);
+				retry = 1;
+				VMODE {
+				    fprintf(stderr, "found one more directory\n");
+				    fflush(stderr);
+				}
+				goto retry;
+			    }
+			}
+		    }
 		}
 	    } else { /* file */
 		DBG {

@@ -32,6 +32,7 @@
 
 #define PATH_WATCH	"./"
 int		dryflag;
+int		sdirflag;
 static int	pid;
 static int	nflag, tflag;
 static int	keep_proc;
@@ -187,7 +188,7 @@ main(int argc, char **argv)
     fformat(topdir);
     strcpy(confname, DEFAULT_CONFNAME);
     if (argc > 3) {
-	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:c:y:")) != -1) {
+	while ((opt = getopt(argc, argv, "Ddkp:vs:n:f:c:y:S")) != -1) {
 	    switch (opt) {
 	    case 'y': /* dry run */
 		dryflag = atoi(optarg); /* sleep if more than 1 */
@@ -244,6 +245,9 @@ main(int argc, char **argv)
 		}
 	    case 'k': /* keeping sftp process */
 		keep_proc = 1;
+		break;
+	    case 'S': /* checking subdirectories at directory creation */
+		sdirflag = 1;
 		break;
 	    }
 	}
