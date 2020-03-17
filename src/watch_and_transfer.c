@@ -192,8 +192,8 @@ main(int argc, char **argv)
 	    switch (opt) {
 	    case 'y': /* dry run */
 		dryflag = atoi(optarg); /* sleep if more than 1 */
-		nflag = MYNOTIFY_DEBUG | MYNOTIFY_VERBOSE;
-		tflag |= TRANS_DEBUG | TRANS_VERBOSE;
+		// nflag = MYNOTIFY_DEBUG | MYNOTIFY_VERBOSE;
+		// tflag |= TRANS_DEBUG | TRANS_VERBOSE;
 		break;
 	    case 'c': /* configuration file */
 		strcpy(confname, optarg);

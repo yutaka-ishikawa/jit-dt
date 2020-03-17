@@ -227,8 +227,8 @@ restart:
 		fformat(getwdir(curdir));
 		VMODE {
 		    fprintf(stderr, "now watching directory %s, dirid(%d), "
-			    "readlen(%ld) cur(%ld)\n",
-			    getwdir(curdir), curdir, len, sz);  fflush(stderr);
+			    "readsize(%ld) len(%ld)\n",
+			    getwdir(curdir), curdir, sz, len);  fflush(stderr);
 		}
 		/* checking 2020.03.17 */
 		if (sdirflag == 1 && retry != 0
