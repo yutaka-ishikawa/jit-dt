@@ -211,9 +211,9 @@ _histremove()
     int		rmhistp;
     histdata	*hp = &history[conshistp];
 
-    if ((nhist - numhist) < KEEP_FILE_COUNT) {
-	goto update; /* just update the pointer and size */
-    }
+    /* consumer pointer must be updated first, 2020.03.19 */
+    UPDATE_POINTER(conshistp);
+    --numhist;
     /*
      * removing history file is the previous "KEEP_FILE_COUNT" backward file.
      */
@@ -234,9 +234,6 @@ _histremove()
 	    hp->fname[i] = 0;
 	}
     }
-update:
-    UPDATE_POINTER(conshistp);
-    --numhist;
 }
 
 void
