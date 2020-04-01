@@ -296,9 +296,16 @@ _jitget(char *host, char *fname, void *data, int *size, int ent)
     sock = netopen(host);
     /* upto three entries */
     ent = ent > TRANSOPT_SIZE ? TRANSOPT_SIZE : ent;
-    if ((cc = netsendreq2(sock, CMD_GET, size, ent)) < 0) return -1;
+    if ((cc = netsendreq2(sock, CMD_GET, size, ent)) < 0) {
+	perror("Cannot send a command to the lwatcher\n");
+	fflush(stderr);
+	goto err_ext;
+    }
     if ((cc = netread(sock, (char*) &tcmd, TCMD_SIZE)) <= 0) {
-	return CMD_EXIT;
+	perror("Cannot read data from the lwatcher\n");
+	fflush(stderr);
+	cc = CMD_EXIT;
+	goto err_ext;
     }
     strncpy(fname, tcmd.str, SCMD_STRSIZ - 1);
     for (ptr = 0, i = 0; i < ent; i++) {
@@ -306,6 +313,8 @@ _jitget(char *host, char *fname, void *data, int *size, int ent)
 	ptr += size[i];		/* next entry */
 	size[i] = tcmd.opt[i];	/* read size */
     }
+    cc = 0;
+err_ext:
     close(sock);
-    return 0;
+    return cc;
 }
