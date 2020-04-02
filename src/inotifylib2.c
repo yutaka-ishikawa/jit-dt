@@ -249,9 +249,11 @@ restart:
 				    fprintf(stderr, "found one more directory\n");
 				    fflush(stderr);
 				}
+				closedir(dirp);
 				goto retry;
 			    }
 			}
+			closedir(dirp);
 		    }
 		}
 	    } else { /* file */

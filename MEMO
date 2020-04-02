@@ -1,3 +1,122 @@
+(1) in case, prodhistp is just updated 
+KEEP_FILE_COUNT = 3
+nhist = 6
+numhist = 3
+conshistp = 4
+prodhistp = 0
+  +-----------+
+0:| new data  | <- prodhistp
+  +-----------+
+1:| old data  |
+  +-----------+
+2:| old data  |
+  +-----------+
+3:| old data  |
+  +-----------+
+4:| new data  | <- conshistp
+  +-----------+
+5:| new data  |
+  +-----------+
+
+if (numhist > (nhist - KEEP_FILE_COUNT)) {
+	3 > (6 -3)
+   rmhistp = ((conshistp + nhist) - KEEP_FILE_COUNT) % nhist;
+}
+
+(2) prodhistp is updated again, REMOVING
+KEEP_FILE_COUNT = 3
+nhist = 6
+numhist = 4
+conshistp = 4
+prodhistp = 1
+  +-----------+
+0:| new data  |
+  +-----------+
+1:| new data  | <- prodhistp
+  +-----------+
+2:| old data  |
+  +-----------+
+3:| old data  |
+  +-----------+
+4:| new data  | <- conshistp
+  +-----------+
+5:| new data  |
+  +-----------+
+if (numhist > (nhist - KEEP_FILE_COUNT)) {
+  4 > (6 - 3)
+  _histremove() {
+    conshistp++; --numhist;
+	conshistp = 5; numhist = 3;
+    rmhistp = ((conshistp + nhist) - KEEP_FILE_COUNT) % nhist;
+	rmhistp = ((5 + 6) - 3) % 6 = 2;
+}
+nhist = 6
+numhist = 3
+conshistp = 5
+prodhistp = 1
+  +-----------+
+0:| new data  |
+  +-----------+
+1:| new data  | <- prodhistp
+  +-----------+
+2:|   NULL    |
+  +-----------+
+3:| old data  |
+  +-----------+
+4:| old data  |
+  +-----------+
+5:| new data  | <- conshistp
+  +-----------+
+
+(3) prodhistp is updated again, REMOVING
+KEEP_FILE_COUNT = 3
+nhist = 6
+numhist = 4
+conshistp = 5
+prodhistp = 2
+  +-----------+
+0:| new data  |
+  +-----------+
+1:| new data  |
+  +-----------+
+2:| new data  | <- prodhistp
+  +-----------+
+3:| old data  |
+  +-----------+
+4:| old data  |
+  +-----------+
+5:| new data  | <- conshistp
+  +-----------+
+if (numhist > (nhist - KEEP_FILE_COUNT)) {
+  4 > (6 - 3)
+  _histremove() {
+    conshistp++; --numhist;
+	conshistp = 0; numhist = 3;
+    rmhistp = ((conshistp + nhist) - KEEP_FILE_COUNT) % nhist;
+	rmhistp = ((0 + 6) - 3) % 6 = 3;
+}
+nhist = 6
+numhist = 3
+conshistp = 0
+prodhistp = 2
+  +-----------+
+0:| new data  | <- conshistp
+  +-----------+
+1:| new data  |
+  +-----------+
+2:| new data  | <- prodhistp
+  +-----------+
+3:| NULL      |
+  +-----------+
+4:| old data  |
+  +-----------+
+5:| old data  |
+  +-----------+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 sftp -b - -o Compression=yes yisikawa@seg-gw.nict.go.jp
 
 curl -F "file=@data.gz" http://kncc-login1.kncc.cc.u-tokyo.ac.jp

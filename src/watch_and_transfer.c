@@ -159,6 +159,7 @@ showoptions(char *top, char *start, char *host, char *remote,
 	LOG_PRINT("  Remote file path            : %s\n", remote);
 	LOG_PRINT("  Local file for notifiaction : %s\n", lntf);
 	LOG_PRINT("  Remote file for notifiaction: %s\n", rntd);
+	LOG_PRINT("  dryflag(%d) sdirflag(%d)\n", dryflag, sdirflag);
 	LOG_PRINT("******************************************************************\n");
     }
 }
