@@ -1,6 +1,8 @@
 /*
  *	Just In Time Data Transfer
  *	12/10/2016 For cluster environment, Yutaka Ishikawa
+ *	04/02/2020 debug log feature is added
+ *			e.g., export JITCLIENT_LOGFILE="jitclient-log.txt"
  */
 #ifdef MPIENV
 #include <mpi.h>
@@ -17,6 +19,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <string.h>
+#include <stdarg.h>
 #include "jitclient.h"
 #include "jitcclient.h"
 
@@ -26,6 +29,38 @@ static char	url[PATH_MAX];
 static char	*strcmd[] = {
     SCMD_NULL,    SCMD_OPEN,    SCMD_CLOSE, SCMD_GET,    SCMD_EXIT,
     SCMD_STATUS,  SCMD_READ,    SCMD_REPLY,   0 };
+
+static FILE	*logfp = 0;
+static void
+_jitc_dinit()
+{
+    static int	dinit = 0;
+    static char	*cp;
+    if (dinit == 0) {
+	cp = getenv("JITCLIENT_LOGFILE");
+	if (cp) {
+	    fprintf(stderr, "LOGFILE = %s\n", cp); fflush(stderr);
+	}
+	logfp = fopen(cp, "w");
+	if (logfp == NULL) {
+	    perror("Cannot create logfile: "); fflush(stderr);
+	}
+	dinit = 1;
+    } else if (dinit == 1) {
+	logfp = freopen(cp, "a", logfp);
+    }
+}
+
+static void
+_jitc_printf(const char *fmt, ...)
+{
+    va_list	ap;
+
+    if (logfp == NULL) return;
+    va_start(ap, fmt);
+    vfprintf(logfp, fmt, ap); fflush(logfp);
+    va_end(ap);
+}
 
 
 int
@@ -293,16 +328,20 @@ _jitget(char *host, char *fname, void *data, int *size, int ent)
     int		cc;
     struct trans_cmd	tcmd;
 
+    _jitc_dinit();
+    _jitc_printf("1");
     sock = netopen(host);
     /* upto three entries */
     ent = ent > TRANSOPT_SIZE ? TRANSOPT_SIZE : ent;
+    _jitc_printf("2");
     if ((cc = netsendreq2(sock, CMD_GET, size, ent)) < 0) {
-	perror("Cannot send a command to the lwatcher\n");
+	perror("Cannot send a command to the lwatcher: ");
 	fflush(stderr);
 	goto err_ext;
     }
+    _jitc_printf("3");
     if ((cc = netread(sock, (char*) &tcmd, TCMD_SIZE)) <= 0) {
-	perror("Cannot read data from the lwatcher\n");
+	perror("Cannot read data from the lwatcher: ");
 	fflush(stderr);
 	cc = CMD_EXIT;
 	goto err_ext;
@@ -315,6 +354,7 @@ _jitget(char *host, char *fname, void *data, int *size, int ent)
     }
     cc = 0;
 err_ext:
+    _jitc_printf("4\n");
     close(sock);
     return cc;
 }
