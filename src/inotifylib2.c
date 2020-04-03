@@ -227,8 +227,9 @@ restart:
 		fformat(getwdir(curdir));
 		VMODE {
 		    fprintf(stderr, "now watching directory %s, dirid(%d), "
-			    "readsize(%ld) len(%ld)\n",
-			    getwdir(curdir), curdir, sz, len);  fflush(stderr);
+			    "readsize(%ld) len(%ld) flag(%d)\n",
+			    getwdir(curdir), curdir, sz, len,
+			    (len + (sizeof(struct inotify_event)+iep->len)) >= sz);  fflush(stderr);
 		}
 		/* checking 2020.03.17 */
 		if (sdirflag == 1 && retry == 0
@@ -240,13 +241,19 @@ restart:
 		    if ((dirp = opendir(getwdir(curdir))) != NULL) {
 			while ((dent = readdir(dirp)) != NULL) {
 			    if (dent->d_type == DT_DIR) {
+				if (!strcmp(dent->d_name, ".")
+				    || !strcmp(dent->d_name, ".")) {
+				    /* skip */
+				    continue;
+				}
 				/* this should be the current directory */
 				strcpy(avpath, getwdir(iep->wd));
 				strcat(avpath, iep->name);
+				strcat(avpath, "/");
 				strcat(avpath, dent->d_name);
 				retry = 1;
 				VMODE {
-				    fprintf(stderr, "found one more directory\n");
+				    fprintf(stderr, "found one more directory %s\n", avpath);
 				    fflush(stderr);
 				}
 				closedir(dirp);
