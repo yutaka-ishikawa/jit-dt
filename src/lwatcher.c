@@ -28,6 +28,7 @@
 #define DEFAULT_CONFNAME "/opt/nowcast/etc/conf"
 
 int		dryflag;
+int		sdirflag;
 static char	lognmbase[PATH_MAX] = "./LWATCHLOG";
 static char	confname[PATH_MAX];
 static char	indir[PATH_MAX];

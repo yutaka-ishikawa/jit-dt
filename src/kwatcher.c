@@ -23,6 +23,7 @@
 #define VMODE if (nflag & TRANS_VERBOSE)
 
 int		dryflag;
+int		sdirflag;
 static char	lognmbase[PATH_MAX] = "/tmp/KWATCHLOG";
 static char	confname[PATH_MAX];
 static char	indir[PATH_MAX], outdir[PATH_MAX];

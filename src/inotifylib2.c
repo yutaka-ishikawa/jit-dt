@@ -231,7 +231,7 @@ restart:
 			    getwdir(curdir), curdir, sz, len);  fflush(stderr);
 		}
 		/* checking 2020.03.17 */
-		if (sdirflag == 1 && retry != 0
+		if (sdirflag == 1 && retry == 0
 		    && (len + (sizeof(struct inotify_event)+iep->len)) >= sz) {
 		    /* no more event is read. checking subdirectory has been
 		     * also created */

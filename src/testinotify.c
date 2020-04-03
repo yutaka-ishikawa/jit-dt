@@ -24,6 +24,7 @@
 
 #define PATH_WATCH	"./"
 int		dryflag;
+int		sdirflag;
 static int	pid;
 static int	nflag, tflag;
 
