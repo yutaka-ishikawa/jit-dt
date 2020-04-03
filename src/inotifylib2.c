@@ -242,7 +242,7 @@ restart:
 			while ((dent = readdir(dirp)) != NULL) {
 			    if (dent->d_type == DT_DIR) {
 				if (!strcmp(dent->d_name, ".")
-				    || !strcmp(dent->d_name, ".")) {
+				    || !strcmp(dent->d_name, "..")) {
 				    /* skip */
 				    continue;
 				}
