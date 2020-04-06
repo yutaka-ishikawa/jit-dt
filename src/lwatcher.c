@@ -21,6 +21,8 @@
 #include "jitclient.h"
 #include "jitcclient.h"
 
+#define LWATCHER_VERSION	"2020/04/06"
+
 #define DBG   if (nflag & TRANS_DEBUG)
 #define VMODE if (nflag & TRANS_VERBOSE)
 
@@ -51,6 +53,7 @@ showsettings(struct sockaddr_in saddr)
     fprintf(stderr, "    History size        : %d\n", histsize());
     fprintf(stderr, "    Log file            : %s\n", lognmbase);
     fprintf(stderr, "    Flags               : %s (%x)\n", flags, nflag);
+    fprintf(stderr, "    Version             : %s\n", LWATCHER_VERSION);
     fprintf(stderr, "*********************************************\n");
     fflush(stderr);
 }
