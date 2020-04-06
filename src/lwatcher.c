@@ -3,12 +3,14 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <getopt.h>
 #include <string.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <libgen.h>
 #include <pthread.h>
@@ -150,6 +152,16 @@ transfer(void *param)
 	}
 	if ((sock = accept(acsock, (struct sockaddr*)saddrp, &addrlen)) < 0) {
 	    perror("accept"); exit(1);
+	}
+	{ /* 2020/04/06: not sure if this is effective  */
+	    int cc, one = 1;
+	    cc = setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+			    (char *)&one, sizeof(one));
+	    if (cc < 0) {
+		fprintf(stderr, "cannot setsockopt(TCP_NODELAY): %s.\n",
+			strerror(errno));
+		exit(2);
+	    }
 	}
 	for (;;) {
 	    DBG {
