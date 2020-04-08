@@ -13,11 +13,14 @@
 //#include <libgen.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <time.h>
 #include <fcntl.h>
 #include <sys/inotify.h>
 #include <sys/select.h>
 #include <dirent.h>
 #include "inotifylib.h"
+#include "misclib.h"
 
 #define DBG		if (flag&MYNOTIFY_DEBUG)
 #define VMODE		if (flag&MYNOTIFY_VERBOSE)
@@ -226,8 +229,14 @@ restart:
 		strcpy(getwdir(curdir), avpath);
 		fformat(getwdir(curdir));
 		VMODE {
-		    fprintf(stderr, "now watching directory %s, dirid(%d), "
-			    "readsize(%ld) len(%ld) flag(%d)\n",
+		    struct timeval	time;
+		    struct timezone	tzone;
+		    char	timefmtbuf[128];
+		    mygettime(&time, &tzone);
+		    timeconv(&time, timefmtbuf);
+		    fprintf(stderr, "%s, now watching directory %s, "
+			    "dirid(%d), readsize(%ld) len(%ld) flag(%d)\n",
+			    timefmtbuf,
 			    getwdir(curdir), curdir, sz, len,
 			    (len + (sizeof(struct inotify_event)+iep->len)) >= sz);  fflush(stderr);
 		}

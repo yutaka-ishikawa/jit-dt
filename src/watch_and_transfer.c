@@ -121,7 +121,13 @@ transfer(char *fname, void **args)
 	return 0;
     }
     if (dryflag) {
-	LOG_PRINT("transfer %s %ld\n", basename(fname), sbuf.st_size);
+	struct timeval	time;
+	struct timezone	tzone;
+	char	timefmtbuf[128];
+	mygettime(&time, &tzone);
+	LOG_PRINT("%s, transfer %s %ld\n", timefmtbuf, basename(fname),
+		  sbuf.st_size);
+	logfupdate();
 	return 1;
     }
     VMODE {
