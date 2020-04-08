@@ -125,6 +125,7 @@ transfer(char *fname, void **args)
 	struct timezone	tzone;
 	char	timefmtbuf[128];
 	mygettime(&time, &tzone);
+	timeconv(&time, timefmtbuf);
 	LOG_PRINT("%s, transfer %s %ld\n", timefmtbuf, basename(fname),
 		  sbuf.st_size);
 	logfupdate();
