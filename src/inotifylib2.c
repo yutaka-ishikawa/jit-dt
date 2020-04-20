@@ -1,5 +1,6 @@
 /*
  *	inotify library separated from jit-transfer
+ *	20/04/2020 checking subdirectories prior to inotify_add_watch
  *	05/01/2020 EVETBUFSIZE is increased
  *	24/12/2017 two inotify events are merged
  *	16/08/2016 Written by Yutaka Ishikawa, RIKEN AICS
@@ -27,6 +28,7 @@
 #define DBG_VMODE	if (flag&(MYNOTIFY_DEBUG|MYNOTIFY_DEBUG))
 #define EVENTBUFSIZE	((sizeof(struct inotify_event)+NAME_MAX+1)*26*8)
 #define MAX_DIRS	(24*60*2+1)
+#define MAX_SUBDIRS	60
 #define MAX_KEEPDIR	4
 #define PATH_WATCH	"./"
 #define IS_EXHAUST(idx)	(idx > (MAX_DIRS - 1))
@@ -40,11 +42,53 @@ char	evtbuf[EVENTBUFSIZE];
 fd_set	readfds;
 int	curdir;
 char	wdirs[MAX_DIRS][PATH_MAX];
+char	dirent[MAX_SUBDIRS][PATH_MAX];
 char	avpath[PATH_MAX];
 char	prevpath[PATH_MAX];
 char	tmppath[PATH_MAX];
 int	qrmdir[MAX_KEEPDIR];
 int	curqrmd;
+
+/* checking subdirectory has been also created */
+static int
+dirs_check(char *path, int sdir, int flag)
+{
+    DIR		*dirp;
+    struct dirent *dent;
+    int		entry = 1;
+
+    strcpy(dirent[0], path);
+    if (sdir == 0) {/* only current directory */
+	return entry;
+    }
+    VMODE {
+	fprintf(stderr, "\tchecking subdir ..."); fflush(stderr);
+    }
+    if ((dirp = opendir(path)) == NULL) {
+	fprintf(stderr, "Cannot open %s\n", path);
+	return 0;
+    }
+    while ((dent = readdir(dirp)) != NULL) {
+	VMODE {
+	    fprintf(stderr, " [%s]", dent->d_name);
+	}
+	if (dent->d_type != DT_DIR) continue;
+	if (!strcmp(dent->d_name, ".")
+	    || !strcmp(dent->d_name, "..")) {
+	    /* skip */
+	    continue;
+	}
+	strcpy(dirent[entry], path);
+	strcat(dirent[entry], dent->d_name);
+	entry++;
+    }
+    VMODE {
+	fprintf(stderr, " done\n");
+    }
+    closedir(dirp);
+    return entry;
+}
+
 
 static char *
 getwdir(int curid)
@@ -188,7 +232,6 @@ restart:
 	struct inotify_event	*iep = (struct inotify_event*) evtbuf;
 	ssize_t		sz, len;
 	struct stat	sbuf;
-	int	newdir = 0;
 
 	if ((sz = read(ntfydir, evtbuf, EVENTBUFSIZE)) < 0) {
 	    perror("read inotify_event"); exit(-1);
@@ -207,6 +250,7 @@ restart:
 		continue;
 	    }
 	    if (S_ISDIR(sbuf.st_mode)) {
+		int	dirs, i;
 		if (!(iep->mask & IN_CREATE)) continue;
 		/* a directory */
 		DBG {
@@ -220,24 +264,25 @@ restart:
 		     */
 		    rm_watch(curdir, ntfydir, flag);
 		}
-		if (IS_EXHAUST(curdir)) goto resetting;
-		curdir = add_watch(ntfydir, avpath,
-				   IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
-		/* setup curdir array */
-		strcpy(getwdir(curdir), avpath);
-		fformat(getwdir(curdir));
-		newdir = 1;
-		VMODE {
-		    struct timeval	time;
-		    struct timezone	tzone;
-		    char	timefmtbuf[128];
-		    mygettime(&time, &tzone);
-		    timeconv(&time, timefmtbuf);
-		    fprintf(stderr, "%s, now watching directory %s, "
-			    "dirid(%d), readsize(%ld) len(%ld) flag(%d)\n",
-			    timefmtbuf,
-			    getwdir(curdir), curdir, sz, len,
-			    (len + (sizeof(struct inotify_event)+iep->len)) >= sz);  fflush(stderr);
+		dirs = dirs_check(avpath, sdirflag, flag);
+		for (i = 0; i < dirs; i++) {
+		    if (IS_EXHAUST(curdir)) goto resetting;
+		    curdir = add_watch(ntfydir, dirent[i],
+				       IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
+		    /* setup curdir array */
+		    strcpy(getwdir(curdir), dirent[i]);
+		    fformat(getwdir(curdir));
+		    VMODE {
+			struct timeval	time;
+			struct timezone	tzone;
+			char	timefmtbuf[128];
+			mygettime(&time, &tzone);
+			timeconv(&time, timefmtbuf);
+			fprintf(stderr, "%s, now watching directory %s, "
+				"dirid(%d), readsize(%ld) len(%ld)\n",
+				timefmtbuf,
+				getwdir(curdir), curdir, sz, len);
+		    }
 		}
 	    } else { /* file */
 		DBG {
@@ -263,52 +308,6 @@ restart:
 		    prevpath[0] = 0;
 		}
 	    }
-	}
-	/* checking 2020.04.20 */
-	if (sdirflag == 1 && newdir == 1) {
-	    /* checking subdirectory has been also created */
-	    DIR		*dirp;
-	    struct dirent *dent;
-	    VMODE {
-		fprintf(stderr, "\tchecking subdir ..."); fflush(stderr);
-	    }
-	    do {
-		newdir = 0;
-		if ((dirp = opendir(getwdir(curdir))) == NULL) break;
-		while ((dent = readdir(dirp)) != NULL) {
-		    VMODE {
-			fprintf(stderr, " [%s]", dent->d_name);
-		    }
-		    if (dent->d_type != DT_DIR) continue;
-		    if (!strcmp(dent->d_name, ".")
-			|| !strcmp(dent->d_name, "..")) {
-			/* skip */
-			continue;
-		    }
-		    /* this should be the current directory */
-		    strcpy(avpath, getwdir(curdir));
-		    strcat(avpath, dent->d_name);
-		    if (IS_EXHAUST(curdir)) goto resetting;
-		    curdir = add_watch(ntfydir, avpath,
-				       IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
-		    /* setup curdir array */
-		    strcpy(getwdir(curdir), avpath);
-		    fformat(getwdir(curdir));
-		    VMODE {
-			struct timeval	time;
-			struct timezone	tzone;
-			char	timefmtbuf[128];
-			mygettime(&time, &tzone);
-			timeconv(&time, timefmtbuf);
-			fprintf(stderr, "\n%s, now watching directory %s, "
-				"dirid(%d)\n", timefmtbuf,
-				getwdir(curdir), curdir);
-			fflush(stderr);
-		    }
-		    newdir = 1;
-		    break;
-		}
-	    } while (newdir == 0);
 	}
 	if (dryflag > 1) {  /* sleep if more than 1 */
 	    fprintf(stderr, "\tsleep %d\n", dryflag - 1);
