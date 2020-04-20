@@ -188,6 +188,7 @@ restart:
 	struct inotify_event	*iep = (struct inotify_event*) evtbuf;
 	ssize_t		sz, len;
 	struct stat	sbuf;
+	int	newdir = 0;
 
 	if ((sz = read(ntfydir, evtbuf, EVENTBUFSIZE)) < 0) {
 	    perror("read inotify_event"); exit(-1);
@@ -195,7 +196,6 @@ restart:
 	for (len = 0; len < sz;
 	     len += sizeof(struct inotify_event)+iep->len,
 	     iep = (struct inotify_event*) ((char*) (iep + 1) + iep->len)) {
-	    int	retry;
 	    DBG {
 		fprintf(stderr, "*** new event for directory (%0x) name(%s) ",
 			iep->mask, iep->name);  fflush(stderr);
@@ -220,14 +220,13 @@ restart:
 		     */
 		    rm_watch(curdir, ntfydir, flag);
 		}
-		retry = 0;
-	    retry:
 		if (IS_EXHAUST(curdir)) goto resetting;
 		curdir = add_watch(ntfydir, avpath,
 				   IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
 		/* setup curdir array */
 		strcpy(getwdir(curdir), avpath);
 		fformat(getwdir(curdir));
+		newdir = 1;
 		VMODE {
 		    struct timeval	time;
 		    struct timezone	tzone;
@@ -239,38 +238,6 @@ restart:
 			    timefmtbuf,
 			    getwdir(curdir), curdir, sz, len,
 			    (len + (sizeof(struct inotify_event)+iep->len)) >= sz);  fflush(stderr);
-		}
-		/* checking 2020.03.17 */
-		if (sdirflag == 1 && retry == 0
-		    && (len + (sizeof(struct inotify_event)+iep->len)) >= sz) {
-		    /* no more event is read. checking subdirectory has been
-		     * also created */
-		    DIR		*dirp;
-		    struct dirent *dent;
-		    if ((dirp = opendir(getwdir(curdir))) != NULL) {
-			while ((dent = readdir(dirp)) != NULL) {
-			    if (dent->d_type == DT_DIR) {
-				if (!strcmp(dent->d_name, ".")
-				    || !strcmp(dent->d_name, "..")) {
-				    /* skip */
-				    continue;
-				}
-				/* this should be the current directory */
-				strcpy(avpath, getwdir(iep->wd));
-				strcat(avpath, iep->name);
-				strcat(avpath, "/");
-				strcat(avpath, dent->d_name);
-				retry = 1;
-				VMODE {
-				    fprintf(stderr, "found one more directory %s\n", avpath);
-				    fflush(stderr);
-				}
-				closedir(dirp);
-				goto retry;
-			    }
-			}
-			closedir(dirp);
-		    }
 		}
 	    } else { /* file */
 		DBG {
@@ -297,12 +264,58 @@ restart:
 		}
 	    }
 	}
-	FD_ZERO(&readfds);
-	FD_SET(ntfydir, &readfds);
+	/* checking 2020.04.20 */
+	if (sdirflag == 1 && newdir == 1) {
+	    /* checking subdirectory has been also created */
+	    DIR		*dirp;
+	    struct dirent *dent;
+	    VMODE {
+		fprintf(stderr, "\tchecking subdir ..."); fflush(stderr);
+	    }
+	    do {
+		newdir = 0;
+		if ((dirp = opendir(getwdir(curdir))) == NULL) break;
+		while ((dent = readdir(dirp)) != NULL) {
+		    VMODE {
+			fprintf(stderr, " [%s]", dent->d_name);
+		    }
+		    if (dent->d_type != DT_DIR) continue;
+		    if (!strcmp(dent->d_name, ".")
+			|| !strcmp(dent->d_name, "..")) {
+			/* skip */
+			continue;
+		    }
+		    /* this should be the current directory */
+		    strcpy(avpath, getwdir(curdir));
+		    strcat(avpath, dent->d_name);
+		    if (IS_EXHAUST(curdir)) goto resetting;
+		    curdir = add_watch(ntfydir, avpath,
+				       IN_CREATE|IN_CLOSE_WRITE|IN_MOVED_TO);
+		    /* setup curdir array */
+		    strcpy(getwdir(curdir), avpath);
+		    fformat(getwdir(curdir));
+		    VMODE {
+			struct timeval	time;
+			struct timezone	tzone;
+			char	timefmtbuf[128];
+			mygettime(&time, &tzone);
+			timeconv(&time, timefmtbuf);
+			fprintf(stderr, "\n%s, now watching directory %s, "
+				"dirid(%d)\n", timefmtbuf,
+				getwdir(curdir), curdir);
+			fflush(stderr);
+		    }
+		    newdir = 1;
+		    break;
+		}
+	    } while (newdir == 0);
+	}
 	if (dryflag > 1) {  /* sleep if more than 1 */
 	    fprintf(stderr, "\tsleep %d\n", dryflag - 1);
 	    sleep(dryflag - 1);
 	}
+	FD_ZERO(&readfds);
+	FD_SET(ntfydir, &readfds);
     }
     return 0;
 resetting:
