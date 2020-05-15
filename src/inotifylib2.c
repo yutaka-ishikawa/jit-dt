@@ -70,17 +70,33 @@ dirs_check(char *path, int sdir, int flag)
     }
     while ((dent = readdir(dirp)) != NULL) {
 	VMODE {
-	    fprintf(stderr, " [%s]", dent->d_name);
+	    fprintf(stderr, " [%s:%d]", dent->d_name, dent->d_type);
 	}
-	if (dent->d_type != DT_DIR) continue;
-	if (!strcmp(dent->d_name, ".")
-	    || !strcmp(dent->d_name, "..")) {
-	    /* skip */
-	    continue;
-	}
-	strcpy(dirent[entry], path);
-	strcat(dirent[entry], dent->d_name);
-	entry++;
+	if (dent->d_type == DT_UNKNOWN) {
+	    /* in NICT environment, readdir does not report the type */
+	    struct stat	sbuf;
+	    strcpy(dirent[entry], path);
+	    strcat(dirent[entry], "/");
+	    strcat(dirent[entry], dent->d_name);
+	    if (stat(dirent[entry], &sbuf) == 0) {
+		if (S_ISDIR(sbuf.st_mode)) {
+		    /* this entry is reported */
+		    entry++;
+		} /* not a directory */
+	    } else {
+		perror("inotify");
+	    }
+	} else if (dent->d_type == DT_DIR) {
+	    if (!strcmp(dent->d_name, ".")
+		|| !strcmp(dent->d_name, "..")) {
+		/* skip */
+		continue;
+	    }
+	    strcpy(dirent[entry], path);
+	    strcat(dirent[entry], "/");
+	    strcat(dirent[entry], dent->d_name);
+	    entry++;
+	} /* otherwise continue */
     }
     VMODE {
 	fprintf(stderr, " done\n");
