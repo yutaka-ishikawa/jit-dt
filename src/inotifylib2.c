@@ -99,7 +99,7 @@ dirs_check(char *path, int sdir, int flag)
 	} /* otherwise continue */
     }
     VMODE {
-	fprintf(stderr, " done\n");
+	fprintf(stderr, " done and return(%d)\n", entry);
     }
     closedir(dirp);
     return entry;
