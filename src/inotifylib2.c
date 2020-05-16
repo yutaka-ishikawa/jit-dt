@@ -1,5 +1,8 @@
 /*
  *	inotify library separated from jit-transfer
+ *	16/05/2020 the stat system call is used if readdir returns unknown
+ *		   in dirs_check. dirs_check is recursively called to traverse
+ *		   subdirectories.
  *	20/04/2020 checking subdirectories prior to inotify_add_watch
  *	05/01/2020 EVETBUFSIZE is increased
  *	24/12/2017 two inotify events are merged
@@ -29,7 +32,7 @@
 #define EVENTBUFSIZE	((sizeof(struct inotify_event)+NAME_MAX+1)*26*8)
 #define MAX_DIRS	(24*60*2+1)
 #define MAX_SUBDIRS	60
-#define MAX_KEEPDIR	4
+#define MAX_KEEPDIR	10
 #define PATH_WATCH	"./"
 #define IS_EXHAUST(idx)	(idx > (MAX_DIRS - 1))
 
@@ -51,13 +54,12 @@ int	curqrmd;
 
 /* checking subdirectory has been also created */
 static int
-dirs_check(char *path, int sdir, int flag)
+dirs_check(int entry, char *path, int sdir, int flag)
 {
     DIR		*dirp;
     struct dirent *dent;
-    int		entry = 1;
 
-    strcpy(dirent[0], path);
+    strcpy(dirent[entry], path);
     if (sdir == 0) {/* only current directory */
 	return entry;
     }
@@ -79,12 +81,12 @@ dirs_check(char *path, int sdir, int flag)
 	    strcat(dirent[entry], "/");
 	    strcat(dirent[entry], dent->d_name);
 	    if (stat(dirent[entry], &sbuf) == 0) {
-		if (S_ISDIR(sbuf.st_mode)) {
-		    /* this entry is reported */
-		    entry++;
-		} /* not a directory */
+		if (!S_ISDIR(sbuf.st_mode)) {
+		    /* not a directory */
+		    continue;
+		}
 	    } else {
-		perror("inotify");
+		perror("inotify"); continue;
 	    }
 	} else if (dent->d_type == DT_DIR) {
 	    if (!strcmp(dent->d_name, ".")
@@ -95,8 +97,12 @@ dirs_check(char *path, int sdir, int flag)
 	    strcpy(dirent[entry], path);
 	    strcat(dirent[entry], "/");
 	    strcat(dirent[entry], dent->d_name);
-	    entry++;
-	} /* otherwise continue */
+	}
+	/* directory has been created */
+	strcat(dirent[entry], "/");
+	/* checking subdirectory.
+	 * The same entry will be copied again */
+	entry += dirs_check(entry, dirent[entry], 1, flag);
     }
     VMODE {
 	fprintf(stderr, " done and return(%d)\n", entry);
@@ -280,7 +286,7 @@ restart:
 		     */
 		    rm_watch(curdir, ntfydir, flag);
 		}
-		dirs = dirs_check(avpath, sdirflag, flag);
+		dirs = dirs_check(0, avpath, sdirflag, flag);
 		for (i = 0; i < dirs; i++) {
 		    if (IS_EXHAUST(curdir)) goto resetting;
 		    curdir = add_watch(ntfydir, dirent[i],
