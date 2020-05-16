@@ -105,7 +105,7 @@ dirs_check(int entry, char *path, int sdir, int flag)
 	entry = dirs_check(entry, dirent[entry], 1, flag);
     }
     VMODE {
-	fprintf(stderr, " done and return(%d)\n", entry);
+	fprintf(stderr, " done and return(%d)\n", entry); fflush(stderr);
     }
     closedir(dirp);
     return entry;
