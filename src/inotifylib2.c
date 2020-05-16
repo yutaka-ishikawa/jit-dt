@@ -59,7 +59,7 @@ dirs_check(int entry, char *path, int sdir, int flag)
     DIR		*dirp;
     struct dirent *dent;
 
-    strcpy(dirent[entry], path);
+    strcpy(dirent[entry++], path);
     if (sdir == 0) {/* only current directory */
 	return entry;
     }
@@ -102,7 +102,7 @@ dirs_check(int entry, char *path, int sdir, int flag)
 	strcat(dirent[entry], "/");
 	/* checking subdirectory.
 	 * The same entry will be copied again */
-	entry += dirs_check(entry, dirent[entry], 1, flag);
+	entry = dirs_check(entry, dirent[entry], 1, flag);
     }
     VMODE {
 	fprintf(stderr, " done and return(%d)\n", entry);
@@ -131,8 +131,8 @@ add_watch(int fd, const char *path, uint32_t mask)
     int	cc;
     /* inotify_add_watch returns a watch descriptor starts from 1 */
     if ((cc = inotify_add_watch(fd, path, mask)) < 0) {
- 	perror("inotify_add_watch:");
-	fprintf(stderr, "file = %s\n", path);
+ 	perror("inotify_add_watch");
+	fprintf(stderr, "file = %s\nexit\n", path);
 	exit(-1);
     }
     return cc;
