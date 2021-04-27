@@ -59,14 +59,14 @@ main(int argc, char **argv)
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
     if (myrank == 0) {
-	printf("Tanstest: nprocs(%d)\n", nprocs);
+	printf("Tanstest: nprocs(%d)\n", nprocs); fflush(stdout);
     }
 #endif
     for (i = 0; i < NUM_ENTRIES; i++) sizes[i] = BUFSIZE;
     for (i = 0; i < iter; i++) {
 	memset(timebuf, 0, DBUF_SIZE);
 	if (jitget(place, fname, &data, sizes, NUM_ENTRIES) < 0) {
-	    printf("Cannot get a file\n");
+	    printf("Cannot get a file\n"); fflush(stdout);
 	    continue;
 	}
 	mygettime(&time, &tzone);

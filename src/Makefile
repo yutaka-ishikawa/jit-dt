@@ -5,7 +5,8 @@
 #INSTTOP = /opt/nowcast
 #INSTTOP = $(HOME)/nowcast
 #INSTTOP = /opt/nowcast/yitest2
-INSTTOP = /work/gg10/e29000/nowcast/kobe
+#INSTTOP ?= /work/gg10/e29000/nowcast/kobe
+INSTTOP ?= /home/hp150019/data/u01148/jit-dt
 
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki jit-dt-kobe-ofp testinotify
@@ -15,8 +16,8 @@ CLIENT_CMDS=jit-kwatch jit-kobewatch kwatcher lwatcher transgen \
 	ltranstest ltranstest2 pltranstest pltranstest2 \
 	ktestgen.pl ltestgen.pl \
 	jit-watch.sh jit-yiwatch jit-yi2watch jit-lwatch
-K_CLIENT_CMDS=jit-kwatch kwatcher transgen k-transtest2 k-ptranstest2
-CLIENT_CONFS=conf conf-test
+FUGAKU_CLIENT_CMDS=jit-kwatch kwatcher transgen f-pltranstest2 jit-fugaku-lwatch lwatcher
+CLIENT_CONFS=conf conf-test conf-saitama
 SERVER_CONFS=serverconf
 
 HOSTNAME=$(shell hostname)
@@ -28,6 +29,12 @@ ifeq (fe01, $(findstring fe01, $(HOSTNAME)))
 	MPICC = mpifccpx
 	KCC = fccpx 
 	FJCFLAGS = -Xg
+else ifeq (fn01, $(findstring fn01, $(HOSTNAME)))
+	MPICC = mpifccpx
+	KCC = fccpx
+	KCCFLAGS = -O3 -g
+	FJCFLAGS = -Nclang
+
 endif
 CC = gcc
 INSTALL = install
@@ -40,14 +47,15 @@ OBJS =	misclib.o regexplib.o translib.o jitclient.o jitkclient.o jitcclient.o \
 	kwatcher.o  lwatcher.o transtest.o transtest2.o transgen.o
 OBJS2 = http_put.o http_daemon.o
 POBJS =  ptranstest.o ptranstest2.o pjitclient.o
-LIBS = libjitdt-k.a libjitdt-pk.a libjitdt-l.a libjitdt-pl.a
+LIBS = libjitdt-k.a libjitdt-pk.a libjitdt-l.a libjitdt-pl.a libf-jitdt-pl.a
 KLIB = jitclient.o jitkclient.o inotifylib2.o misclib.o regexplib.o
 K-KLIB = k-jitclient.o k-jitkclient.o k-inotifylib2.o k-misclib.o k-regexplib.o
 PKLIB = pjitclient.o jitkclient.o inotifylib2.o misclib.o
 K-PKLIB = pjitclient.o k-jitkclient.o k-inotifylib2.o k-misclib.o
 LLIB = jitclient.o jitcclient.o inotifylib2.o misclib.o regexplib.o
 PLLIB = pjitclient.o jitcclient.o inotifylib2.o misclib.o
-CCFLAGS += -O3 -Wall -g -c $(FJCFLAGS)
+F-PLLIB = f-pjitclient.o f-jitcclient.o f-misclib.o 
+CCFLAGS += -O3 -Wall -g -c
 MPICCFLAGS += -DMPIENV $(CCFLAGS) $(FJCFLAGS)
 LDFLAGS_HTTP_DAEMON = \
 	../libmicrohttpd-0.9.47/src/microhttpd/.libs/libmicrohttpd.a \
@@ -69,7 +77,7 @@ endif
 all: server client libs
 server: $(SERVER_CMDS)
 client: $(CLIENT_CMDS)
-k_client: $(K_CLIENT_CMDS)
+fugaku_client: $(FUGAKU_CLIENT_CMDS)
 libs: $(LIBS)
 #
 libjitdt-k.a: $(KLIB)
@@ -83,6 +91,8 @@ libjitdt-pl.a: $(PLLIB)
 libk-jitdt-k.a: $(K-KLIB)
 	ar rs $@ $^
 libk-jitdt-pk.a: $(K-PKLIB)
+	ar rs $@ $^
+libf-jitdt-pl.a: $(F-PLLIB)
 	ar rs $@ $^
 
 install: install_server install_client install_lib
@@ -101,11 +111,11 @@ install_lib: libs
 	[ -d $(INSTLIB) ] || mkdir -p $(INSTLIB)
 	$(INSTALL) jitclient.h misclib.h $(INSTINCL)
 	$(INSTALL) $(LIBS) $(INSTLIB)
-install_k_client: k_client
+install_fugaku_client: fugaku_client
 	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
-	$(INSTALL) $(K_CLIENT_CMDS) $(INSTBIN) 
+	$(INSTALL) $(FUGAKU_CLIENT_CMDS) $(INSTBIN) 
 	[ -d $(INSTETC) ] || mkdir -p $(INSTETC)
-	$(INSTALL) -m 0644 $(CLIENT_CONFS) $(INSTETC) 
+	$(INSTALL) -m 0644 $(CLIENT_CONFS) $(INSTETC)
 
 .PHONY: depend
 depend:  $(OBJS:.o=.c)
@@ -113,6 +123,7 @@ depend:  $(OBJS:.o=.c)
 .PHONY: clean
 clean:
 	rm -f $(OBJS) $(LIBS) $(POBJS) $(COMMANDS) depend.inc
+	rm -f *.o
 #
 http_daemon: http_daemon.o
 	$(CC) -o $@ $^ $(LDFLAGS_HTTP_DAEMON) 
@@ -138,6 +149,11 @@ k-transtest2: k-transtest2.o libk-jitdt-k.a
 	$(KCC) -o $@ $< -L. -lk-jitdt-k
 k-ptranstest2: k-ptranstest2.o libk-jitdt-pk.a
 	$(MPICC) -o $@ $< -L. -lk-jitdt-pk
+#
+f-pltranstest2: ptranstest2.o libf-jitdt-pl.a
+	$(MPICC) -o $@ $< -L. -lf-jitdt-pl
+#	$(MPICC) -o $@ $< pjitclient.o
+#
 ltranstest: transtest.o libjitdt-l.a
 	$(CC) -o $@ $< -L. -ljitdt-l
 pltranstest: ptranstest.o libjitdt-pl.a
@@ -156,6 +172,13 @@ ptranstest.o: transtest.c
 ptranstest2.o: transtest2.c
 	$(MPICC) $(MPICCFLAGS) -o $@ -c $<
 #
+#
+f-misclib.o: misclib.c
+	$(KCC) $(KCCFLAGS) -o $@ -c $<
+f-pjitclient.o: jitclient.c
+	$(MPICC) $(MPICCFLAGS) -o $@ -c $<
+f-jitcclient.o: jitcclient.c
+	$(KCC) $(KCCFLAGS) -o $@ -c $<
 #
 k-jitclient.o: jitclient.c
 	$(KCC) $(CCFLAGS) -o $@ -c $<

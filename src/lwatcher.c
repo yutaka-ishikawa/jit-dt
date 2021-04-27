@@ -21,7 +21,7 @@
 #include "jitclient.h"
 #include "jitcclient.h"
 
-#define LWATCHER_VERSION	"2020/04/06"
+#define LWATCHER_VERSION	"2021/04/27"
 
 #define DBG   if (nflag & TRANS_DEBUG)
 #define VMODE if (nflag & TRANS_VERBOSE)
@@ -51,6 +51,7 @@ showsettings(struct sockaddr_in saddr)
     fprintf(stderr, "    Listening Port      : %d\n", ntohs(saddr.sin_port));
     fprintf(stderr, "    Watching  directory : %s\n", indir);
     fprintf(stderr, "    History size        : %d\n", histsize());
+    fprintf(stderr, "    Conf file           : %s\n", confname);
     fprintf(stderr, "    Log file            : %s\n", lognmbase);
     fprintf(stderr, "    Flags               : %s (%x)\n", flags, nflag);
     fprintf(stderr, "    Version             : %s\n", LWATCHER_VERSION);
@@ -99,15 +100,21 @@ init_transfer(char *host, int port, struct sockaddr_in *saddrp)
 }
 
 int
-watcher(char *fname, void **args)
+watcher(char *fpath, void **args)
 {
     static char	date[128], type[128];
+    static char	fname[1024];
     int		tp;
     long long	dt;
 
     /* adding history */
     VMODE {
-	fprintf(stderr, "%s arrives\n", fname); fflush(stderr);
+	fprintf(stderr, "%s arrives\n", fpath); fflush(stderr);
+    }
+    {
+	int	idx = strlen(indir);
+	while (fpath[idx] == '/') idx++;
+	strncpy(fname, &fpath[idx], 1023);
     }
     if (regex_match(fname, date, type, NULL, NULL) < 0) {
 	fprintf(stderr, "Cannot parse the file name. skipping\n");
@@ -116,9 +123,9 @@ watcher(char *fname, void **args)
     dt = atoll(date);
     tp = sync_entry(type);
     if (tp < 0) {
-	unlink(fname);
+	unlink(fpath);
     } else {
-	histput(fname, dt, tp);
+	histput(fpath, dt, tp);
     }
     return 0;
 }
@@ -172,8 +179,8 @@ transfer(void *param)
 	    }
 	    cmd = trans_getcmd(sock, opt);
 	    DBG {
-		printf("cmd = %d opt1(%d) opt2(%d) opt3(%d)\n",
-		       cmd, opt[0], opt[1], opt[2]);
+		fprintf(stderr, "cmd = %d opt1(%d) opt2(%d) opt3(%d)\n",
+			cmd, opt[0], opt[1], opt[2]); fflush(stderr);
 	    }
 	    switch (cmd) {
 	    case CMD_OPEN: /* opt1:type */

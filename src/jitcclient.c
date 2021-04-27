@@ -3,6 +3,7 @@
  *	12/10/2016 For cluster environment, Yutaka Ishikawa
  *	04/02/2020 debug log feature is added
  *			e.g., export JITCLIENT_LOGFILE="jitclient-log.txt"
+ *	04/27/2021 fixing a bug without the JITCLIENT_LOGFILE variable
  */
 #ifdef MPIENV
 #include <mpi.h>
@@ -40,12 +41,15 @@ _jitc_dinit()
 	cp = getenv("JITCLIENT_LOGFILE");
 	if (cp) {
 	    fprintf(stderr, "LOGFILE = %s\n", cp); fflush(stderr);
+	    logfp = fopen(cp, "w");
+	    if (logfp) {
+		dinit = 1;
+	    } else {
+		perror("Cannot create logfile: "); fflush(stderr);
+	    }
+	} else {
+	    dinit = -1; /* no log file */
 	}
-	logfp = fopen(cp, "w");
-	if (logfp == NULL) {
-	    perror("Cannot create logfile: "); fflush(stderr);
-	}
-	dinit = 1;
     } else if (dinit == 1) {
 	logfp = freopen(cp, "a", logfp);
     }
