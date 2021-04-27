@@ -5,7 +5,17 @@
 #	20150806-140030.all.10000000.dat
 #	20150806-140030.all.20000000.dat
 #	20150806-140030.all_pawr_qcf.dat
+# Saitama
+#       20190820_163008.00-00-PPI.RAW-ZH_MTI.AUTO-02-NORMAL.saitama.dat
 
+region saitama {
+    pattern = ".*-PPI.RAW-ZH_MTI.AUTO-02-NORMAL.saitama.dat$";
+}
+
+region saitama {
+    pattern = ".*-PPI.RAW-VH_MTI.AUTO-02-NORMAL.saitama.dat$";
+}
+    
 region kobe {
     pattern = ".*_\\(.*\\)_A06_pawr_\\(.*\\).dat";
 }

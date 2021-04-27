@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# login2: 134.160.188.26
+# login3: 134.160.188.27
+# login4: 134.160.188.28
+# login5: 134.160.188.29
+TOP=~/tokyo/
+REMOTEUSER=u01148
+##PKCS11=~/.ssh/id_rsa_hibiki.aics.riken.jp
+SCRIPT_FILE=~/TOKYO_SSH_AGENT_SCRIPT
+PID_FILE=~/TOKYO_JITDT_PID
+DAEMON=watch_and_transfer
+OPTIONS="sftp:$REMOTEUSER@134.160.188.26:/home/hp150019/data/u01148/jit-dt/saitama/data/ \
+    /mnt/latest-raw/ \
+    -p 22 \
+    -c $TOP/etc/serverconf \
+    -n $TOP/jitready:/home/hp150019/data/u01148/jit-dt/saitama/bell/ -v -D \
+    -f $TOP/JITLOG"
+
+#    -s 2021-0426/15/
+
+
+case "$1" in
+  start)
+        echo -n "Starting jit-dt: "
+	SCRIPT=`ssh-agent`
+	eval $SCRIPT
+	ssh-add $PKCS11
+	echo $SCRIPT >$SCRIPT_FILE
+	shift 1
+	$DAEMON $OPTIONS $* >$PID_FILE
+	if [ "$?" -ne 0 ]; then
+	    echo "KILL ssh-agent"
+	    kill -KILL `sed -e 's/.*pid \(.*\);/\1/' $SCRIPT_FILE`
+	fi
+        echo "done"
+        ;;
+  stop)
+        echo -n "Stopping jit-dt: "
+	kill -KILL `cat $PID_FILE`
+	kill -KILL `sed -e 's/.*pid \(.*\);/\1/' $SCRIPT_FILE`
+        echo "done"
+        ;;
+  *)
+        echo "Usage: jit-dt start [<options>]" >&2
+        echo "       jit-dt stop" >&2
+        echo "  Ex.  jit-dt start 2016-1207/10/" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
