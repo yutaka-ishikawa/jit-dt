@@ -2,11 +2,15 @@
 # For K and hibiki, -DUSE_LOCKF is required
 #
 #CCFLAGS = -DUSE_LOCKF
-#INSTTOP = /opt/nowcast
-#INSTTOP = $(HOME)/nowcast
-#INSTTOP = /opt/nowcast/yitest2
-#INSTTOP ?= /work/gg10/e29000/nowcast/kobe
+#
 INSTTOP ?= /home/hp150019/data/u01148/jit-dt
+REGION ?= saitama
+
+INSTBIN = $(INSTTOP)/bin
+INSTINCL = $(INSTTOP)/include
+INSTLIB =  $(INSTTOP)/lib
+INSTETC =  $(INSTTOP)/etc
+INSTREGION = $(INSTTOP)/$(REGION)
 
 .PHONY: all
 SERVER_CMDS=watch_and_transfer jit-dt jit-dt-hibiki jit-dt-kobe-hibiki jit-dt-suita-hibiki jit-dt-kobe-ofp testinotify
@@ -17,6 +21,7 @@ CLIENT_CMDS=jit-kwatch jit-kobewatch kwatcher lwatcher transgen \
 	ktestgen.pl ltestgen.pl \
 	jit-watch.sh jit-yiwatch jit-yi2watch jit-lwatch
 FUGAKU_CLIENT_CMDS=jit-kwatch kwatcher transgen f-pltranstest2 jit-fugaku-lwatch lwatcher
+GEN_COMMANDS = jit-fugaku-lwatch
 CLIENT_CONFS=conf conf-test conf-saitama
 SERVER_CONFS=serverconf
 
@@ -38,10 +43,6 @@ else ifeq (fn01, $(findstring fn01, $(HOSTNAME)))
 endif
 CC = gcc
 INSTALL = install
-INSTBIN = $(INSTTOP)/bin
-INSTINCL = $(INSTTOP)/include
-INSTLIB =  $(INSTTOP)/lib
-INSTETC =  $(INSTTOP)/etc
 OBJS =	misclib.o regexplib.o translib.o jitclient.o jitkclient.o jitcclient.o \
 	inotifylib2.o watch_and_transfer.o testinotify.o \
 	kwatcher.o  lwatcher.o transtest.o transtest2.o transgen.o
@@ -105,24 +106,37 @@ install_client: client
 	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
 	$(INSTALL) $(CLIENT_CMDS) $(INSTBIN) 
 	[ -d $(INSTETC) ] || mkdir -p $(INSTETC)
-	$(INSTALL) -m 0644 $(CLIENT_CONFS) $(INSTETC) 
+	$(INSTALL) -m 0644 $(CLIENT_CONFS) $(INSTETC)
+	[ -d $(INSTREGION) ] || mkdir -p $(INSTREGION)
+	[ -d $(INSTREGION)/data ] || mkdir -p $(INSTREGION)/data
+	[ -d $(INSTREGION)/bell ] || mkdir -p $(INSTREGION)/bell
+	[ -d $(INSTREGION)/log ] || mkdir -p $(INSTREGION)/log
 install_lib: libs
 	[ -d $(INSTINCL) ] || mkdir -p $(INSTINCL)
 	[ -d $(INSTLIB) ] || mkdir -p $(INSTLIB)
 	$(INSTALL) jitclient.h misclib.h $(INSTINCL)
 	$(INSTALL) $(LIBS) $(INSTLIB)
-install_fugaku_client: fugaku_client
+install_fugaku_client: fugaku_client jit-fugaku-lwatch
 	[ -d $(INSTBIN) ] || mkdir -p $(INSTBIN)
 	$(INSTALL) $(FUGAKU_CLIENT_CMDS) $(INSTBIN) 
 	[ -d $(INSTETC) ] || mkdir -p $(INSTETC)
 	$(INSTALL) -m 0644 $(CLIENT_CONFS) $(INSTETC)
+	[ -d $(INSTREGION) ] || mkdir -p $(INSTREGION)
+	[ -d $(INSTREGION)/data ] || mkdir -p $(INSTREGION)/data
+	[ -d $(INSTREGION)/bell ] || mkdir -p $(INSTREGION)/bell
+	[ -d $(INSTREGION)/log ] || mkdir -p $(INSTREGION)/log
+
+jit-fugaku-lwatch: jit-fugaku-lwatch.in
+	sed -e 's%<TOP>%TOP=$(INSTTOP)%' jit-fugaku-lwatch.in | \
+	sed -e 's%<REGION>%REGION=$(REGION)%' > jit-fugaku-lwatch
+	chmod +x jit-fugaku-lwatch
 
 .PHONY: depend
 depend:  $(OBJS:.o=.c)
 	-@ for i in $^; do cpp -MM $$i | sed "s/\ [_a-zA-Z0-9][_a-zA-Z0-9]*\.c//g" >> depend.inc; done
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(LIBS) $(POBJS) $(COMMANDS) depend.inc
+	rm -f $(OBJS) $(LIBS) $(POBJS) $(GEN_COMMANDS) depend.inc
 	rm -f *.o
 #
 http_daemon: http_daemon.o
