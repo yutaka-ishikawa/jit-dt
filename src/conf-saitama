@@ -1,0 +1,27 @@
+#
+# Kobe
+#	kobe_20161209171230_A06_pawr_ze.dat
+# Osaka
+#	20150806-140030.all.10000000.dat
+#	20150806-140030.all.20000000.dat
+#	20150806-140030.all_pawr_qcf.dat
+# Saitama
+#	20210426_154207.00-00-PPI.RAW-VH_MTI.AUTO-02-NORMAL.saitama.dat
+#	20210426_154207.00-00-PPI.RAW-ZH_MTI.AUTO-02-NORMAL.saitama.dat
+
+region saitama {
+    pattern = "\\([0-9].*\\)_\\([0-9].*\\).00-00-PPI.RAW-VH_MTI.AUTO-02-NORMAL.saitama.dat$";
+    date = "$1$2";
+    type = "vh";
+}
+
+region saitama {
+    pattern = "\\([0-9].*\\)_\\([0-9].*\\).00-00-PPI.RAW-ZH_MTI.AUTO-02-NORMAL.saitama.dat$";
+    date = "$1$2";
+    type = "zh";
+}
+
+sync {
+     type = "vh";
+     type = "zh";
+}
