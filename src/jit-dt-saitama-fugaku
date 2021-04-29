@@ -6,15 +6,17 @@
 # login5: 134.160.188.29
 TOP=~/tokyo/
 REMOTEUSER=u01148
+REMOTEDIR=/home/hp150019/data/share-test/nowcast/saitama/
 ##PKCS11=~/.ssh/id_rsa_hibiki.aics.riken.jp
+
 SCRIPT_FILE=~/TOKYO_SSH_AGENT_SCRIPT
 PID_FILE=~/TOKYO_JITDT_PID
 DAEMON=watch_and_transfer
-OPTIONS="sftp:$REMOTEUSER@134.160.188.26:/home/hp150019/data/u01148/jit-dt/saitama/data/ \
+OPTIONS="sftp:$REMOTEUSER@134.160.188.26:$REMOTEDIR/data/ \
     /mnt/latest-raw/ \
     -p 22 \
     -c $TOP/etc/serverconf \
-    -n $TOP/jitready:/home/hp150019/data/u01148/jit-dt/saitama/bell/ -v -D \
+    -n $TOP/jitready:$REMOTEDIR/bell/ -v -D \
     -f $TOP/JITLOG"
 
 #    -s 2021-0426/15/

@@ -2,16 +2,19 @@
 1) Installation on Fugaku side.
    ssh to login2(134.160.188.26)
    $ export TOP=/home/hp150019/data/share
+   $ cd $TOP
    $ git clone https://github.com/yutaka-ishikawa/jit-dt.git
-   $ cd jit-dt/src
+   $ cd jit-dt
+   You will see the README-FUGAKU that is this file.
+   $ cd src
    $ export INSTTOP=$TOP/nowcast
    $ make fugaku_client
    $ make install_fugaku_client
    $ mkdir results
-   $ cd $TOP/bin
+   $ cd $INSTTOP/bin
    $ ./jit-fugaku-lwatch start
    See the daemon is correctly running.
-     $ $TOP/saitama/log
+     $ $INSTTOP/saitama/log
      $ cat LWATCHLOG.1
 2) Installation on NICT side.
    ssh to DS01 via dp4 via ssh.nict.go.jp
@@ -50,9 +53,12 @@
   If not, please change the first argument of the f-pltranstest2 program.
 
 5) End of testing
-   5.1) Stopping the watch_and_transfer command
+   5.1) Stopping the watch_and_transfer command on NICT side.
    	To stop the command, just type control-C on the shell executing
 	the watch_and_transfer command.
+   5.2) Stopping the lwatcher command on Fugaku side.
+	$ cd $INSTTOP/bin
+	$ ./jit-fugaku-lwatch stop
 
 6) Now run a demon on NICT side
    $ ./jit-dt-saitama-fugaku start
