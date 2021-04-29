@@ -1,0 +1,59 @@
+
+1) Installation on Fugaku side.
+   ssh to login2(134.160.188.26)
+   $ export TOP=/home/hp150019/data/share
+   $ git clone https://github.com/yutaka-ishikawa/jit-dt.git
+   $ cd jit-dt/src
+   $ export INSTTOP=$TOP/nowcast
+   $ make fugaku_client
+   $ make install_fugaku_client
+   $ mkdir results
+   $ cd $TOP/bin
+   $ ./jit-fugaku-lwatch start
+   See the daemon is correctly running.
+     $ $TOP/saitama/log
+     $ cat LWATCHLOG.1
+2) Installation on NICT side.
+   ssh to DS01 via dp4 via ssh.nict.go.jp
+   $ cd ~/tokyo/bin/
+   edit the jit-dt-saitama-fugaku file and change the following variables
+      REMOTEUSER
+      REMOTEDIR
+      PKCS11
+   It is required a private key for the daemon process.
+
+3) Test the watch_and_transfer command, invoked by
+   the jit-dt-saitama-fugaku script, on NICT side.
+   The following example is just for a transfer test without daemonize.
+   You will see the transfer progress.
+   Be sure that ssh agent is working
+   $ printenv | grep SSH
+   If the agent is working, you will see the SSH_CONNECTION varible.
+   Then,
+   $ export TOP_DIR=~/tokyo
+   $ export REMOTEDIR=/home/hp150019/data/share-test/nowcast/saitama/
+   $ export REMOTEUSER=u01148
+   $ ~/tokyo/bin/watch_and_transfer \
+	sftp:u01148@134.160.188.26:$REMOTEDIR/data/ \
+        /mnt/latest-raw/ \
+	-p 22 \
+	-c $TOP_DIR/etc/serverconf \
+	-n $TOP_DIR/jitready:$REMOTEDIR/bell// -v \
+	-f $TOP_DIR/JITLOG \
+	2021-0429/14/
+   You will see transfer log messages every about 30 minutes.
+
+4) Run a test program on Fugaku side
+  $ cd $TOP/
+  $ pjsub run-pltranstest2-fugaku.sh
+  The script assumes that the jit-fugaku-lwatch runs on login2.
+  If not, please change the first argument of the f-pltranstest2 program.
+
+5) End of testing
+   5.1) Stopping the watch_and_transfer command
+   	To stop the command, just type control-C on the shell executing
+	the watch_and_transfer command.
+
+6) Now run a demon on NICT side
+   $ ./jit-dt-saitama-fugaku start
+   Please look at the log file if the daemon is working.
